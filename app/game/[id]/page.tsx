@@ -17,8 +17,8 @@ const SUIT_SYMBOLS: Record<Suit, string> = {
 const SUIT_COLORS: Record<Suit, string> = {
   Hearts: "text-red-500",
   Diamonds: "text-red-500",
-  Clubs: "text-gray-900 dark:text-gray-100",
-  Spades: "text-gray-900 dark:text-gray-100",
+  Clubs: "text-black",
+  Spades: "text-black",
 };
 
 const RANK_MAP: Record<Rank, string> = {
@@ -26,6 +26,28 @@ const RANK_MAP: Record<Rank, string> = {
   Seven: "7", Eight: "8", Nine: "9", Ten: "10",
   Jack: "J", Queen: "Q", King: "K", Ace: "A",
 };
+
+const CARD_VALUES: Record<Rank, number> = {
+  Two: 2, Three: 3, Four: 4, Five: 5, Six: 6,
+  Seven: 7, Eight: 8, Nine: 9, Ten: 10,
+  Jack: 10, Queen: 10, King: 10, Ace: 11,
+};
+
+function calculateHandValue(cards: Card[]): number {
+    if (!cards || !Array.isArray(cards)) return 0;
+    let value = 0;
+    let aces = 0;
+    for (const card of cards) {
+        if (!card || !card.rank) continue; 
+        if (card.rank === "Ace") aces++;
+        value += CARD_VALUES[card.rank] || 0;
+    }
+    while (value > 21 && aces > 0) {
+        value -= 10;
+        aces--;
+    }
+    return value;
+}
 
 function CardDisplay({ card, hidden }: { card: Card, hidden?: boolean }) {
   if (hidden) {
@@ -70,6 +92,12 @@ export default function GameRoom() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  useEffect(() => {
+    if (isConnected && myPlayerId && gameState?.players.find(p => p.id === myPlayerId)) {
+        setHasJoined(true);
+    }
+  }, [isConnected, myPlayerId, gameState]);
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,6 +219,7 @@ export default function GameRoom() {
                            {cards.map((c: any, i) => <div key={i} className="transform scale-75 origin-top-left"><CardDisplay card={c} /></div>)}
                            {cards.length === 0 && <span className="text-xs text-white/30 italic">No cards</span>}
                        </div>
+                       {cards.length > 0 && <div className="text-xs font-bold text-yellow-300 text-center -mt-2 mb-1">Value: {calculateHandValue(cards)}</div>}
                        <div className="text-xs text-center mt-1 text-green-200 capitalize">{p.status}</div>
                    </div>
                  );
@@ -204,21 +233,32 @@ export default function GameRoom() {
             {/* Dealer Area */}
             <div className="flex flex-col items-center justify-center py-8">
                 <div className="mb-2 text-green-200 font-bold uppercase tracking-wider text-sm">Dealer</div>
-                <div className="flex gap-2 justify-center">
+                <div className="flex gap-2 justify-center mb-2">
                     {gameState.dealer_hand.map((card, idx) => (
                         <CardDisplay key={idx} card={card} />
                     ))}
-                    {/* Placeholder for hidden card if game active and dealer has 1? Backend usually handles this by sending truncated hand */}
+                    
+                    {/* Show hidden card back if dealer has exactly 1 card */}
+                    {gameState.dealer_hand.length === 1 && (
+                         <CardDisplay card={gameState.dealer_hand[0]} hidden={true} />
+                    )}
+
+                    {/* Placeholder for empty hand */}
                     {gameState.dealer_hand.length === 0 && (
                         <div className="w-16 h-24 border-2 border-dashed border-green-600/50 rounded-lg flex items-center justify-center text-green-600/50">
                             Empty
                         </div>
                     )}
                 </div>
+                {gameState.dealer_hand.length > 0 && (
+                   <div className="bg-black/40 px-3 py-1 rounded-full text-sm font-bold text-yellow-300 border border-yellow-600/30">
+                       {calculateHandValue(gameState.dealer_hand)}
+                   </div>
+                )}
             </div>
 
             {/* Notification/Status Area */}
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center relative">
                  {gameState.phase === "GameOver" && (
                      <div className="bg-black/50 p-6 rounded-xl backdrop-blur text-center animate-bounce">
                          <h2 className="text-3xl font-bold text-yellow-400">Round Over</h2>
@@ -228,6 +268,21 @@ export default function GameRoom() {
                             </button>
                          )}
                      </div>
+                 )}
+                 {gameState.phase === "Payout" && isAdmin && (
+                    <div className="bg-black/50 p-6 rounded-xl backdrop-blur text-center relative z-20">
+                        <h2 className="text-2xl font-bold text-yellow-400 mb-4">Payouts Complete</h2>
+                        <button onClick={actions.nextRound} className="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-full font-bold shadow-lg animate-pulse">
+                            Start Next Round
+                        </button>
+                    </div>
+                 )}
+                 {gameState.phase === "Betting" && isAdmin && (
+                    <div className="absolute top-10 left-1/2 transform -translate-x-1/2 z-20">
+                        <button onClick={actions.startGame} className="bg-yellow-600 hover:bg-yellow-500 px-6 py-2 rounded-full font-bold shadow-lg whitespace-nowrap">
+                            Start Round (Deal)
+                        </button>
+                    </div>
                  )}
                  {gameState.phase === "Lobby" && (
                      <div className="text-center">
@@ -272,6 +327,26 @@ export default function GameRoom() {
                             })()}
                             {(!myPlayer?.hands?.length) && <div className="text-white/30 self-center">Waiting for cards...</div>}
                         </div>
+
+                        {(() => {
+                             const hands: any[] = myPlayer?.hands || [];
+                             const activeIndex = myPlayer?.active_hand_index ?? 0;
+                             const activeHandObj = hands[activeIndex];
+                             let cards: any[] = [];
+                             if (activeHandObj) {
+                                 if (Array.isArray(activeHandObj)) cards = activeHandObj;
+                                 else if (activeHandObj && typeof activeHandObj === 'object' && 'cards' in activeHandObj) cards = activeHandObj.cards;
+                             }
+                             
+                             if (cards.length > 0) {
+                                 return (
+                                     <div className="mb-4 bg-black/50 px-4 py-1 rounded-full text-xl font-bold text-yellow-300 border border-yellow-500/50">
+                                         {calculateHandValue(cards)}
+                                     </div>
+                                 );
+                             }
+                             return null;
+                        })()}
 
                         {/* Controls */}
                         {gameState.phase === "Betting" && (
@@ -339,7 +414,9 @@ export default function GameRoom() {
                            <div key={p.id} className="flex justify-between items-center bg-gray-700 p-2 rounded text-xs gap-2">
                                <span className="truncate flex-1">{p.name}</span>
                                <button onClick={() => actions.updateBalance(p.id, 100)} className="text-green-400 hover:bg-gray-600 px-1 rounded">+100</button>
-                               <button onClick={() => actions.kickPlayer(p.id)} className="text-red-400 hover:bg-gray-600 px-1 rounded">Kick</button>
+                               {p.id !== myPlayerId && (
+                                    <button onClick={() => actions.kickPlayer(p.id)} className="text-red-400 hover:bg-gray-600 px-1 rounded">Kick</button>
+                               )}
                            </div>
                        ))}
                    </div>
