@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { 
     ClientAction, ServerEvent, GameState, Player, ChatMessage, PlayerRequest, GameSettings 
 } from '../types';
@@ -21,8 +21,11 @@ export function useBlackjack() {
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [pendingRequests, setPendingRequests] = useState<PlayerRequest[]>([]);
     const [toasts, setToasts] = useState<Toast[]>([]);
+    const [lastPingTime, setLastPingTime] = useState<number>(0);
+    const [latency, setLatency] = useState<number | null>(null);
 
     const socketRef = useRef<WebSocket | null>(null);
+    const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Toast helper
     const addToast = useCallback((msg: string, type: 'error' | 'info' = 'info') => {
@@ -33,7 +36,62 @@ export function useBlackjack() {
         }, 3000);
     }, []);
 
-    const connect = useCallback((gameId: string, username: string) => {
+    const lastPingTimeRef = useRef(0);
+
+    const sendPing = useCallback(() => {
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            lastPingTimeRef.current = Date.now();
+            socketRef.current.send(JSON.stringify({ action: "Ping", payload: null }));
+        }
+    }, []);
+
+    const sendMessage = useCallback((msg: any) => {
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            console.log("Sending WebSocket message:", msg);
+            socketRef.current.send(JSON.stringify(msg));
+        } else {
+             console.warn("Cannot send message, WebSocket not open. State:", socketRef.current?.readyState);
+        }
+    }, []);
+
+    useEffect(() => {
+        // Setup ping interval
+        const intervalMs = parseInt(process.env.NEXT_PUBLIC_PING_INTERVAL_MS || "5000", 10);
+        pingIntervalRef.current = setInterval(() => {
+            if (socketRef.current?.readyState === WebSocket.OPEN) {
+               sendPing();
+            }
+        }, intervalMs);
+
+        return () => {
+            if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+        };
+    }, [sendPing]);
+    
+    // Actions
+    const startGame = useCallback(() => sendMessage({ action: "StartGame", payload: null }), [sendMessage]);
+    const nextRound = useCallback(() => sendMessage({ action: "NextRound", payload: null }), [sendMessage]);
+    const placeBet = useCallback((amount: number) => sendMessage({ action: "PlaceBet", payload: { amount } }), [sendMessage]);
+    const sendGameAction = useCallback((type: "Hit" | "Stand" | "Double" | "Split") => sendMessage({ action: "GameAction", payload: { action_type: type } }), [sendMessage]);
+    const sendChat = useCallback((message: string) => sendMessage({ action: "Chat", payload: { message } }), [sendMessage]);
+    
+    // Admin Actions
+    const approvePlayer = useCallback((player_id: string) => {
+        sendMessage({ action: "ApprovePlayer", payload: { player_id } });
+        setPendingRequests(prev => prev.filter(p => p.id !== player_id)); // Optimistic remove
+    }, [sendMessage]);
+    const kickPlayer = useCallback((player_id: string) => sendMessage({ action: "KickPlayer", payload: { player_id } }), [sendMessage]);
+    const updateSettings = useCallback((settings: GameSettings) => sendMessage({ action: "UpdateSettings", payload: { settings } }), [sendMessage]);
+    const updateBalance = useCallback((target_id: string, change_chips: number) => sendMessage({ action: "AdminUpdateBalance", payload: { target_id, change_chips } }), [sendMessage]);
+    const disconnect = useCallback(() => {
+        if (socketRef.current) {
+            socketRef.current.close();
+            setGameState(null);
+            setIsConnected(false);
+        }
+    }, []);
+
+    const connect = useCallback((gameId: string, username?: string) => {
         if (socketRef.current) {
             socketRef.current.close();
         }
@@ -70,11 +128,17 @@ export function useBlackjack() {
             setIsConnected(true);
             // Only send JoinGame if NOT reconnecting
             if (!isReconnection) {
-                console.log("Sending JoinGame:", { username });
-                sendMessage({ action: "JoinGame", payload: { username } });
+                if(username) {
+                    console.log("Sending JoinGame:", { username });
+                    sendMessage({ action: "JoinGame", payload: { username } });
+                } else {
+                    console.warn("Connected but no username provided and not reconnecting. Waiting for JoinGame.");
+                }
             } else {
                  console.log("Reconnecting with existing session");
                  addToast("Resuming session...", 'info');
+                 // Trigger immediate ping to verify
+                 ws.send(JSON.stringify({ action: "Ping", payload: null }));
             }
         };
 
@@ -83,16 +147,10 @@ export function useBlackjack() {
                 // Ignore messages that are not JSON
                 if (typeof event.data !== 'string') return;
                 
-                console.log("Received WebSocket message:", event.data);
+                // console.log("Received WebSocket message:", event.data); // Too noisy with ping/pong
 
                 const msg: any = JSON.parse(event.data);
                 if (msg.event) {
-                     // Need to call handleServerEvent in a way that respects the closure or pass gameId
-                     // But wait, handleServerEvent is defined outside. We can pass gameId as an argument
-                     // if we redefine handleServerEvent to accept it or rely on it being in scope?
-                     // Actually, we can just pass msg and handle it. But we need gameId for localStorage.
-                     // The connect function has gameId in scope.
-                     
                      // Handle JoinedLobby specially here to save to localStorage since handleServerEvent logic was moved
                      if (msg.event === "JoinedLobby") {
                         console.log("Handling JoinedLobby event", msg.data);
@@ -100,10 +158,14 @@ export function useBlackjack() {
                         if (your_id && secret) {
                             console.log("Saving auth credentials to localStorage");
                             localStorage.setItem(`blackjack_auth_${gameId}`, JSON.stringify({ id: your_id, secret }));
+                            setMyPlayerId(your_id);
                         }
                      }
-
-                     handleServerEvent(msg);
+                     if (msg.event === "Pong") {
+                        setLatency(Date.now() - lastPingTimeRef.current);
+                     } else {
+                         handleServerEvent(msg);
+                     }
                 }
             } catch (err) {
                 console.error("Failed to parse message", err);
@@ -131,22 +193,13 @@ export function useBlackjack() {
             console.error("WebSocket error", err);
             addToast("WebSocket connection error", 'error');
         };
-    }, [addToast]);
-
-    const sendMessage = (msg: any) => {
-        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            console.log("Sending WebSocket message:", msg);
-            socketRef.current.send(JSON.stringify(msg));
-        } else {
-             console.warn("Cannot send message, WebSocket not open. State:", socketRef.current?.readyState);
-        }
-    };
+    }, [addToast, sendMessage, lastPingTime]); // lastPingTime dependency is problematic for connect, but we will fix handler.
 
     const handleServerEvent = (msg: any) => {
-        console.log("Processing Server Event:", msg.event);
+        // console.log("Processing Server Event:", msg.event);
         switch (msg.event) {
             case "GameStateSnapshot":
-                console.log("GameState:", msg.data);
+                // console.log("GameState:", msg.data);
                 setGameState(msg.data);
                 if (msg.data.players) {
                      setPendingRequests(prev => prev.filter(req => !msg.data.players.find((p: any) => p.id === req.id)));
@@ -175,22 +228,27 @@ export function useBlackjack() {
                 break;
         }
     };
-
-    // Actions
-    const startGame = () => sendMessage({ action: "StartGame", payload: null });
-    const nextRound = () => sendMessage({ action: "NextRound", payload: null });
-    const placeBet = (amount: number) => sendMessage({ action: "PlaceBet", payload: { amount } });
-    const sendGameAction = (type: "Hit" | "Stand" | "Double" | "Split") => sendMessage({ action: "GameAction", payload: { action_type: type } });
-    const sendChat = (message: string) => sendMessage({ action: "Chat", payload: { message } });
     
-    // Admin Actions
-    const approvePlayer = (player_id: string) => {
-        sendMessage({ action: "ApprovePlayer", payload: { player_id } });
-        setPendingRequests(prev => prev.filter(p => p.id !== player_id)); // Optimistic remove
-    };
-    const kickPlayer = (player_id: string) => sendMessage({ action: "KickPlayer", payload: { player_id } });
-    const updateSettings = (settings: GameSettings) => sendMessage({ action: "UpdateSettings", payload: { settings } });
-    const updateBalance = (target_id: string, change_chips: number) => sendMessage({ action: "AdminUpdateBalance", payload: { target_id, change_chips } });
+// removed duplicate sendPing
+
+    // Update the Pong handler inside the onmessage or handleServerEvent to use the ref
+    // We'll move the specific Pong handling logic into the onmessage block in `connect` or ensure handleServerEvent reads the ref.
+    // Actually simplicity: modify handleServerEvent to just do nothing for Pong, but handle it in onMessage where we can setLatency based on Ref.
+    
+    // Re-writing connect to be cleaner and use the Ref approach for pong.
+
+    const actions = useMemo(() => ({
+        startGame,
+        nextRound,
+        placeBet,
+        sendGameAction,
+        sendChat,
+        approvePlayer,
+        kickPlayer,
+        updateSettings,
+        updateBalance,
+        disconnect
+    }), [startGame, nextRound, placeBet, sendGameAction, sendChat, approvePlayer, kickPlayer, updateSettings, updateBalance, disconnect]);
 
     return {
         isConnected,
@@ -200,17 +258,8 @@ export function useBlackjack() {
         chatMessages,
         pendingRequests,
         toasts,
+        latency,
         connect,
-        actions: {
-            startGame,
-            nextRound,
-            placeBet,
-            sendGameAction,
-            sendChat,
-            approvePlayer,
-            kickPlayer,
-            updateSettings,
-            updateBalance
-        }
+        actions
     };
 }

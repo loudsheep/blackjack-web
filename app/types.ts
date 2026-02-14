@@ -7,7 +7,7 @@ export interface Card {
 }
 
 export type PlayerStatus = "Playing" | "Observing" | "PendingApproval" | "Spectating" | "Sitting";
-export type HandStatus = "Playing" | "Stood" | "Busted" | "Blackjack" | "Doubled";
+export type HandStatus = "Playing" | "Stood" | "Busted" | "Blackjack" | "Doubled" | "Won" | "Lost" | "Push" | "Surrendered";
 
 export interface Hand {
     cards: Card[];
@@ -23,6 +23,7 @@ export interface Player {
     active_hand_index: number;
     status: PlayerStatus;
     is_admin: boolean;
+    is_connected: boolean;
 }
 
 export interface GameSettings {

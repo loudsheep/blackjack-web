@@ -78,7 +78,7 @@ export default function GameRoom() {
   const router = useRouter();
   
   const { 
-    isConnected, gameState, myPlayerId, isAdmin, chatMessages, pendingRequests, toasts, connect, actions 
+    isConnected, gameState, myPlayerId, isAdmin, chatMessages, pendingRequests, toasts, latency, connect, actions 
   } = useBlackjack();
 
   const [username, setUsername] = useState("");
@@ -86,6 +86,7 @@ export default function GameRoom() {
   const [betAmount, setBetAmount] = useState(10);
   const [chatInput, setChatInput] = useState("");
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
 
   // Auto-scroll chat
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -94,10 +95,68 @@ export default function GameRoom() {
   }, [chatMessages]);
 
   useEffect(() => {
+    // If not connected and not joined, check if we have creds to auto-join
+    if (!isConnected && !hasJoined) {
+        const storedAuth = localStorage.getItem(`blackjack_auth_${roomId}`);
+        if (storedAuth) {
+             connect(roomId);
+             setHasJoined(true);
+        }
+    }
+  }, [roomId, isConnected, hasJoined, connect]);
+
+  useEffect(() => {
     if (isConnected && myPlayerId && gameState?.players.find(p => p.id === myPlayerId)) {
         setHasJoined(true);
     }
   }, [isConnected, myPlayerId, gameState]);
+
+  const latestGameStateRef = useRef(gameState);
+  useEffect(() => { latestGameStateRef.current = gameState; }, [gameState]);
+
+  // Turn Timeout Logic
+  const hasAutoStoodRef = useRef(false);
+
+  useEffect(() => {
+     // Reset auto-stood flag when turn changes
+     if (gameState?.current_turn_player_id !== myPlayerId) {
+         hasAutoStoodRef.current = false;
+     }
+
+     // Only run timer if it is MY turn
+     if (gameState?.phase === "Playing" && gameState.current_turn_player_id === myPlayerId) {
+         const timeoutSec = parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30");
+         setTimeLeft(timeoutSec);
+         
+         const timer = setInterval(() => {
+             setTimeLeft(prev => {
+                 const newVal = prev - 0.1;
+                 if (newVal <= 0) return 0;
+                 return newVal;
+             });
+         }, 100);
+         return () => clearInterval(timer);
+     } else {
+         setTimeLeft(0);
+     }
+  }, [gameState?.phase, gameState?.current_turn_player_id, myPlayerId]);
+
+  // Separate effect to handle the timeout action when timeLeft hits 0
+  useEffect(() => {
+    if (timeLeft === 0 && gameState?.phase === "Playing" && gameState?.current_turn_player_id === myPlayerId && !hasAutoStoodRef.current) {
+         // Use a small delay to ensure the UI updates to 0 and the user sees it
+         const timeoutId = setTimeout(() => {
+             // Double check state is still valid after the delay
+             if (latestGameStateRef.current?.current_turn_player_id === myPlayerId && !hasAutoStoodRef.current) {
+                 console.log("Auto-standing due to timeout");
+                 hasAutoStoodRef.current = true;
+                 actions.sendGameAction("Stand");
+             }
+         }, 1000);
+         return () => clearTimeout(timeoutId);
+    }
+  }, [timeLeft, gameState?.phase, gameState?.current_turn_player_id, myPlayerId, actions]);
+
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,6 +230,17 @@ export default function GameRoom() {
         </div>
         
         <div className="flex gap-4 items-center">
+            {latency !== null && (
+                 <div className={`text-xs px-2 py-1 rounded ${latency < 100 ? 'bg-green-800 text-green-200' : latency < 300 ? 'bg-yellow-800 text-yellow-200' : 'bg-red-800 text-red-200'}`}>
+                     Ping: {latency}ms
+                 </div>
+            )}
+            <button 
+                onClick={() => { actions.disconnect(); router.push('/'); }} 
+                className="px-3 py-1 bg-red-800/50 hover:bg-red-700/50 rounded text-sm text-red-200 border border-red-700/50"
+            >
+                Leave
+            </button>
             {isAdmin && (
                 <button
                     onClick={() => setShowAdminPanel(!showAdminPanel)}
@@ -210,16 +280,38 @@ export default function GameRoom() {
                  }
 
                  return (
-                   <div key={p.id} className={`p-3 rounded-lg border ${gameState.current_turn_player_id === p.id ? 'border-yellow-400 bg-yellow-900/20' : 'border-transparent bg-green-900/40'}`}>
+                   <div key={p.id} className={`p-3 rounded-lg border relative overflow-hidden transition-colors duration-300
+                       ${!p.is_connected ? 'opacity-50 grayscale bg-gray-900 border-gray-700' : 
+                         gameState.current_turn_player_id === p.id ? 'border-yellow-400 bg-yellow-900/20 shadow-glow-yellow' : 'border-transparent bg-green-900/40'}
+                   `}>
+                       {/* Turn Countdown Progress Bar */}
+                       {gameState.current_turn_player_id === p.id && (
+                           <div className="absolute top-0 left-0 h-1 bg-yellow-400 animate-shrink" style={{ width: '100%', animationDuration: `${process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || 30}s` }} />
+                       )}
+
                        <div className="flex justify-between items-center mb-2">
-                           <span className="font-bold text-sm truncate">{p.name} {p.is_admin && '👑'}</span>
+                           <span className="font-bold text-sm truncate flex items-center gap-1">
+                               {p.name} 
+                               {p.is_admin && '👑'}
+                               {!p.is_connected && <span className="text-[10px] text-red-400 uppercase border border-red-500/50 px-1 rounded">Offline</span>}
+                           </span>
                            <span className="text-xs text-yellow-200">${p.chips}</span>
                        </div>
                        <div className="flex -space-x-2 overflow-hidden py-2 h-16">
                            {cards.map((c: any, i) => <div key={i} className="transform scale-75 origin-top-left"><CardDisplay card={c} /></div>)}
-                           {cards.length === 0 && <span className="text-xs text-white/30 italic">No cards</span>}
+                           {cards.length === 0 && p.status !== 'Sitting' && !(!p.is_connected) && <span className="text-xs text-white/30 italic">No cards</span>}
+                           {p.status === 'Sitting' && <span className="text-xs text-white/30 italic">Sitting out</span>}
                        </div>
                        {cards.length > 0 && <div className="text-xs font-bold text-yellow-300 text-center -mt-2 mb-1">Value: {calculateHandValue(cards)}</div>}
+                       {/* Show Hand Result/Status if defined and not just 'Playing' */}
+                       {hands.length > 0 && (hands[0] as any).status && (hands[0] as any).status !== 'Playing' && (
+                           <div className={`text-xs text-center font-bold uppercase tracking-wider mb-1
+                               ${['Won', 'Blackjack'].includes((hands[0] as any).status) ? 'text-green-400' : 
+                                 ['Lost', 'Busted'].includes((hands[0] as any).status) ? 'text-red-400' : 
+                                 'text-gray-400'}`}>
+                               {(hands[0] as any).status}
+                           </div>
+                       )}
                        <div className="text-xs text-center mt-1 text-green-200 capitalize">{p.status}</div>
                    </div>
                  );
@@ -325,7 +417,9 @@ export default function GameRoom() {
                                     </div>
                                 ));
                             })()}
-                            {(!myPlayer?.hands?.length) && <div className="text-white/30 self-center">Waiting for cards...</div>}
+                            {/* Hide waiting message if sitting out */}
+                            {(!myPlayer?.hands?.length) && myPlayer?.status !== 'Sitting' && myPlayer?.status !== 'Spectating'  && <div className="text-white/30 self-center">Waiting for cards...</div>}
+                            {myPlayer?.status === 'Sitting'  && gameState.phase != 'Payout' && <div className="text-yellow-500/50 self-center font-bold uppercase tracking-widest text-sm">Sitting Out</div>}
                         </div>
 
                         {(() => {
@@ -340,9 +434,19 @@ export default function GameRoom() {
                              
                              if (cards.length > 0) {
                                  return (
-                                     <div className="mb-4 bg-black/50 px-4 py-1 rounded-full text-xl font-bold text-yellow-300 border border-yellow-500/50">
-                                         {calculateHandValue(cards)}
-                                     </div>
+                                     <>
+                                         <div className="mb-2 bg-black/50 px-4 py-1 rounded-full text-xl font-bold text-yellow-300 border border-yellow-500/50">
+                                             {calculateHandValue(cards)}
+                                         </div>
+                                         {(activeHandObj as any)?.status && (activeHandObj as any).status !== 'Playing' && (
+                                             <div className={`text-2xl font-black uppercase tracking-widest animate-pulse
+                                                 ${['Won', 'Blackjack'].includes((activeHandObj as any).status) ? 'text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]' : 
+                                                   ['Lost', 'Busted'].includes((activeHandObj as any).status) ? 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 
+                                                   'text-gray-300'}`}>
+                                                 {(activeHandObj as any).status}
+                                             </div>
+                                         )}
+                                     </>
                                  );
                              }
                              return null;
@@ -369,11 +473,24 @@ export default function GameRoom() {
                         )}
 
                         {gameState.phase === "Playing" && isMyTurn && (
-                            <div className="flex gap-4">
-                                <button onClick={() => actions.sendGameAction("Hit")} className="btn-action bg-green-600 px-6 py-2 rounded font-bold hover:scale-105 transition-transform">HIT</button>
-                                <button onClick={() => actions.sendGameAction("Stand")} className="btn-action bg-red-600 px-6 py-2 rounded font-bold hover:scale-105 transition-transform">STAND</button>
-                                <button onClick={() => actions.sendGameAction("Double")} className="btn-action bg-blue-600 px-6 py-2 rounded font-bold hover:scale-105 transition-transform">DOUBLE</button>
-                                {/* Split only if logic permits, simplified here */}
+                            <div className="flex flex-col gap-2 items-center">
+                                <div className="w-full bg-gray-700 h-1.5 rounded-full overflow-hidden">
+                                     <div 
+                                        className={`h-full bg-yellow-400 ${timeLeft === parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30") ? '' : 'transition-all duration-100 ease-linear'}`} 
+                                        style={{ width: `${(timeLeft / (parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30"))) * 100}%` }}
+                                     />
+                                </div>
+                                <div className="flex gap-4">
+                                    <button onClick={() => actions.sendGameAction("Hit")} className="btn-action bg-green-600 px-6 py-2 rounded font-bold hover:scale-105 transition-transform">HIT</button>
+                                    <button 
+                                        onClick={() => actions.sendGameAction("Stand")} 
+                                        className={`btn-action bg-red-600 px-6 py-2 rounded font-bold hover:scale-105 transition-transform relative overflow-hidden ${timeLeft < 5 ? 'animate-pulse ring-4 ring-red-500/50' : ''}`}
+                                    >
+                                        STAND
+                                        {timeLeft < 10 && <span className="absolute top-0 right-1 text-[10px]">{Math.ceil(timeLeft)}</span>}
+                                    </button>
+                                    <button onClick={() => actions.sendGameAction("Double")} className="btn-action bg-blue-600 px-6 py-2 rounded font-bold hover:scale-105 transition-transform">DOUBLE</button>
+                                </div>
                             </div>
                         )}
                          
