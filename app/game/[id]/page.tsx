@@ -114,6 +114,16 @@ export default function GameRoom() {
   const latestGameStateRef = useRef(gameState);
   useEffect(() => { latestGameStateRef.current = gameState; }, [gameState]);
 
+  // Derived state (moved up for use in effects)
+  const myPlayer = gameState?.players.find(p => p.id === myPlayerId);
+  // Calculate active hand details for timer reset
+  const activeHandIndex = myPlayer?.active_hand_index ?? 0;
+  const activeHandObj = myPlayer?.hands?.[activeHandIndex];
+  const activeHandCardsCount = activeHandObj 
+      ? (Array.isArray(activeHandObj) ? activeHandObj.length : (activeHandObj as any).cards?.length) 
+      : 0;
+  const totalHandsCount = myPlayer?.hands?.length || 0;
+
   // Turn Timeout Logic
   const hasAutoStoodRef = useRef(false);
 
@@ -139,7 +149,7 @@ export default function GameRoom() {
      } else {
          setTimeLeft(0);
      }
-  }, [gameState?.phase, gameState?.current_turn_player_id, myPlayerId]);
+  }, [gameState?.phase, gameState?.current_turn_player_id, myPlayerId, activeHandCardsCount, totalHandsCount]);
 
   // Separate effect to handle the timeout action when timeLeft hits 0
   useEffect(() => {
@@ -166,8 +176,7 @@ export default function GameRoom() {
     }
   };
 
-  // derived state
-  const myPlayer = gameState?.players.find(p => p.id === myPlayerId);
+  // derived state (other players, etc) - myPlayer moved up
   const otherPlayers = gameState?.players.filter(p => p.id !== myPlayerId) || [];
   const isMyTurn = gameState?.current_turn_player_id === myPlayerId;
   const canBet = gameState?.phase === "Betting" && myPlayer?.status !== "Observing" && myPlayer?.status !== "PendingApproval";
@@ -271,11 +280,29 @@ export default function GameRoom() {
                  // or if hands[0] is an array (old structure option)
                  let cards: any[] = [];
                  
+                 // Used for keying the animation to reset on action
+                 const activeHandIdx = p.active_hand_index || 0;
+                 const activeHand = hands[activeHandIdx];
+                 let activeHandCardsCount = 0;
+
                  if (hands.length > 0) {
+                     // For display, we might just show first hand or active hand? 
+                     // The original code was showing hands[0]. Let's stick to that for now or improve it?
+                     // The code below visualizes "cards" which it sets to hands[0].
+                     
                      if (Array.isArray(hands[0])) {
                          cards = hands[0];
                      } else if (hands[0] && typeof hands[0] === 'object' && 'cards' in hands[0]) {
                          cards = hands[0].cards;
+                     }
+                     
+                     // Calculate active hand count for the timer key
+                     if (activeHand) {
+                        if (Array.isArray(activeHand)) {
+                            activeHandCardsCount = activeHand.length;
+                        } else if (typeof activeHand === 'object' && 'cards' in activeHand) {
+                            activeHandCardsCount = activeHand.cards.length;
+                        }
                      }
                  }
 
@@ -286,7 +313,14 @@ export default function GameRoom() {
                    `}>
                        {/* Turn Countdown Progress Bar */}
                        {gameState.current_turn_player_id === p.id && (
-                           <div className="absolute top-0 left-0 h-1 bg-yellow-400 animate-shrink" style={{ width: '100%', animationDuration: `${process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || 30}s` }} />
+                           <div 
+                              key={`${p.id}-turn-timer-${activeHandCardsCount}-${hands.length}`} 
+                              className="absolute top-0 left-0 h-1 bg-yellow-400 animate-shrink" 
+                              style={{ 
+                                width: '100%', 
+                                animationDuration: `${process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || 30}s` 
+                              }} 
+                           />
                        )}
 
                        <div className="flex justify-between items-center mb-2">
