@@ -166,8 +166,21 @@ export default function GameRoom() {
             <h3 className="text-xs font-bold uppercase text-green-300 mb-4">Players ({gameState.players.length})</h3>
             <div className="space-y-4">
                {otherPlayers.map(p => {
-                 // Defensive check: if hands[0] is an array, use it (nested hands), otherwise assume hands itself is the cards array
-                 const firstHand = (p.hands && Array.isArray(p.hands[0])) ? p.hands[0] : (p.hands || []);
+                 // Defensive check: access hands array. Hands are objects { cards: [...], ... }
+                 // We want the cards from the first hand for visualization if we only show one
+                 const hands = p.hands || [];
+                 // Check if hands[0] exists and has a 'cards' property (new structure)
+                 // or if hands[0] is an array (old structure option)
+                 let cards: any[] = [];
+                 
+                 if (hands.length > 0) {
+                     if (Array.isArray(hands[0])) {
+                         cards = hands[0];
+                     } else if (hands[0] && typeof hands[0] === 'object' && 'cards' in hands[0]) {
+                         cards = hands[0].cards;
+                     }
+                 }
+
                  return (
                    <div key={p.id} className={`p-3 rounded-lg border ${gameState.current_turn_player_id === p.id ? 'border-yellow-400 bg-yellow-900/20' : 'border-transparent bg-green-900/40'}`}>
                        <div className="flex justify-between items-center mb-2">
@@ -175,8 +188,8 @@ export default function GameRoom() {
                            <span className="text-xs text-yellow-200">${p.chips}</span>
                        </div>
                        <div className="flex -space-x-2 overflow-hidden py-2 h-16">
-                           {Array.isArray(firstHand) && firstHand.map((c: any, i) => <div key={i} className="transform scale-75 origin-top-left"><CardDisplay card={c} /></div>)}
-                           {(!firstHand || firstHand.length === 0) && <span className="text-xs text-white/30 italic">No cards</span>}
+                           {cards.map((c: any, i) => <div key={i} className="transform scale-75 origin-top-left"><CardDisplay card={c} /></div>)}
+                           {cards.length === 0 && <span className="text-xs text-white/30 italic">No cards</span>}
                        </div>
                        <div className="text-xs text-center mt-1 text-green-200 capitalize">{p.status}</div>
                    </div>
@@ -233,12 +246,28 @@ export default function GameRoom() {
                         <div className="flex gap-4 justify-center mb-6 min-h-[100px]">
                             {(() => {
                                 // Defensive logic for hand
-                                const hands = myPlayer?.hands || [];
-                                const currentHand = (hands.length > 0 && Array.isArray(hands[0])) ? hands[0] : hands;
-                                if (!Array.isArray(currentHand)) return null; // Should be array of cards
+                                const hands: any[] = myPlayer?.hands || [];
                                 
-                                return currentHand.map((card: any, idx) => (
-                                    <CardDisplay key={idx} card={card} />
+                                // Determine active hand or just first hand
+                                const activeIndex = myPlayer?.active_hand_index ?? 0;
+                                const activeHandObj = hands[activeIndex];
+
+                                let cards: any[] = [];
+                                
+                                if (activeHandObj) {
+                                    if (Array.isArray(activeHandObj)) {
+                                         // Old structure: hands is array of arrays of cards
+                                         cards = activeHandObj;
+                                    } else if (activeHandObj && typeof activeHandObj === 'object' && 'cards' in activeHandObj) {
+                                         // New structure: Hand object with cards property
+                                         cards = activeHandObj.cards;
+                                    }
+                                }
+                                
+                                return cards.map((card: any, idx) => (
+                                    <div key={idx} className="transform hover:-translate-y-4 transition-transform duration-200">
+                                       <CardDisplay card={card} />
+                                    </div>
                                 ));
                             })()}
                             {(!myPlayer?.hands?.length) && <div className="text-white/30 self-center">Waiting for cards...</div>}
