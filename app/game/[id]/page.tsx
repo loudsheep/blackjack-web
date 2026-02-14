@@ -83,7 +83,7 @@ export default function GameRoom() {
   const myPlayer = gameState?.players.find(p => p.id === myPlayerId);
   const otherPlayers = gameState?.players.filter(p => p.id !== myPlayerId) || [];
   const isMyTurn = gameState?.current_turn_player_id === myPlayerId;
-  const canBet = gameState?.phase === "Betting" && myPlayer?.status !== "Busted" && myPlayer?.status !== "Stood"; // Check logic vs phase
+  const canBet = gameState?.phase === "Betting" && myPlayer?.status !== "Observing" && myPlayer?.status !== "PendingApproval";
 
   if (!hasJoined || !isConnected ) {
     return (

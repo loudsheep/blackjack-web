@@ -39,34 +39,92 @@ export function useBlackjack() {
         }
 
         const ws_url = process.env.NEXT_PUBLIC_WS_URL || "ws://127.0.0.1:3000/ws";
-        const url = `${ws_url}/${gameId}`;
 
+        // Check local storage for reconnection credentials
+        const storedAuth = localStorage.getItem(`blackjack_auth_${gameId}`);
+        let authParams = "";
+        let isReconnection = false;
+
+        if (storedAuth) {
+            try {
+                const { id, secret } = JSON.parse(storedAuth);
+                if (id && secret) {
+                    authParams = `?player_id=${id}&secret=${secret}`;
+                    isReconnection = true;
+                    setMyPlayerId(id);
+                }
+            } catch (e) {
+                console.error("Failed to parse stored auth", e);
+                localStorage.removeItem(`blackjack_auth_${gameId}`);
+            }
+        }
+
+        const url = `${ws_url}/${gameId}${authParams}`;
         console.log("Connecting to:", url);
+        
         const ws = new WebSocket(url);
         socketRef.current = ws;
 
         ws.onopen = () => {
+            console.log("WebSocket connection opened");
             setIsConnected(true);
-            sendMessage({ action: "JoinGame", payload: { username } });
+            // Only send JoinGame if NOT reconnecting
+            if (!isReconnection) {
+                console.log("Sending JoinGame:", { username });
+                sendMessage({ action: "JoinGame", payload: { username } });
+            } else {
+                 console.log("Reconnecting with existing session");
+                 addToast("Resuming session...", 'info');
+            }
         };
 
         ws.onmessage = (event) => {
             try {
+                // Ignore messages that are not JSON
+                if (typeof event.data !== 'string') return;
+                
+                console.log("Received WebSocket message:", event.data);
+
                 const msg: any = JSON.parse(event.data);
                 if (msg.event) {
-                    handleServerEvent(msg);
+                     // Need to call handleServerEvent in a way that respects the closure or pass gameId
+                     // But wait, handleServerEvent is defined outside. We can pass gameId as an argument
+                     // if we redefine handleServerEvent to accept it or rely on it being in scope?
+                     // Actually, we can just pass msg and handle it. But we need gameId for localStorage.
+                     // The connect function has gameId in scope.
+                     
+                     // Handle JoinedLobby specially here to save to localStorage since handleServerEvent logic was moved
+                     if (msg.event === "JoinedLobby") {
+                        console.log("Handling JoinedLobby event", msg.data);
+                        const { your_id, secret, is_admin } = msg.data;
+                        if (your_id && secret) {
+                            console.log("Saving auth credentials to localStorage");
+                            localStorage.setItem(`blackjack_auth_${gameId}`, JSON.stringify({ id: your_id, secret }));
+                        }
+                     }
+
+                     handleServerEvent(msg);
                 }
             } catch (err) {
                 console.error("Failed to parse message", err);
             }
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
+            console.log("WebSocket connection closed", event.code, event.reason);
             setIsConnected(false);
             setGameState(null);
             setMyPlayerId(null);
             setIsAdmin(false);
-            addToast("Disconnected from server", 'error');
+
+            // 403 Forbidden usually means full or invalid reconnection
+            if (event.code === 403 || event.reason.includes("Forbidden")) {
+                 console.warn("Connection rejected (403 Forbidden). Clearing auth.");
+                 addToast("Connection rejected (Full or Invalid)", 'error');
+                 localStorage.removeItem(`blackjack_auth_${gameId}`);
+            } else {
+                 addToast("Disconnected from server", 'error');
+            }
         };
 
         ws.onerror = (err) => {
@@ -77,20 +135,25 @@ export function useBlackjack() {
 
     const sendMessage = (msg: any) => {
         if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            console.log("Sending WebSocket message:", msg);
             socketRef.current.send(JSON.stringify(msg));
+        } else {
+             console.warn("Cannot send message, WebSocket not open. State:", socketRef.current?.readyState);
         }
     };
 
     const handleServerEvent = (msg: any) => {
+        console.log("Processing Server Event:", msg.event);
         switch (msg.event) {
             case "GameStateSnapshot":
+                console.log("GameState:", msg.data);
                 setGameState(msg.data);
-                // Also update pending requests if player is approved? 
                 if (msg.data.players) {
                      setPendingRequests(prev => prev.filter(req => !msg.data.players.find((p: any) => p.id === req.id)));
                 }
                 break;
             case "JoinedLobby":
+                console.log("Joined Lobby:", msg.data);
                 setMyPlayerId(msg.data.your_id);
                 setIsAdmin(msg.data.is_admin);
                 addToast("Joined game lobby", 'info');
@@ -99,6 +162,7 @@ export function useBlackjack() {
                 setChatMessages(prev => [...prev, { ...msg.data, timestamp: Date.now() }]);
                 break;
             case "PlayerRequest":
+                console.log("Player Request:", msg.data);
                 setPendingRequests(prev => {
                     if (prev.find(r => r.id === msg.data.id)) return prev;
                     return [...prev, msg.data];
@@ -106,6 +170,7 @@ export function useBlackjack() {
                 addToast(`New Join Request: ${msg.data.name}`, 'info');
                 break;
             case "Error":
+                console.error("Server Error:", msg.data.msg);
                 addToast(msg.data.msg, 'error');
                 break;
         }

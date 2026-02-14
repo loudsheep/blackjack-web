@@ -6,16 +6,23 @@ export interface Card {
     rank: Rank;
 }
 
-export type PlayerStatus = "Playing" | "Stood" | "Busted" | "Blackjack" | "Won" | "Lost" | "Push" | "Surrender";
+export type PlayerStatus = "Playing" | "Observing" | "PendingApproval" | "Spectating" | "Sitting";
+export type HandStatus = "Playing" | "Stood" | "Busted" | "Blackjack" | "Doubled";
+
+export interface Hand {
+    cards: Card[];
+    bet: number;
+    status: HandStatus;
+}
 
 export interface Player {
     id: string;
     name: string;
     chips: number;
-    hands: Card[][]; // Changed to array of hands (arrays of cards)
+    hands: Hand[];
+    active_hand_index: number;
     status: PlayerStatus;
     is_admin: boolean;
-    bet: number;
 }
 
 export interface GameSettings {
@@ -64,8 +71,9 @@ export type ClientAction =
 // Server Events (Backend -> Frontend)
 export type ServerEvent =
     | { event: "GameStateSnapshot"; data: GameState }
-    | { event: "JoinedLobby"; data: { game_id: string; your_id: string; is_admin: boolean } }
+    | { event: "JoinedLobby"; data: { game_id: string; your_id: string; secret: string; is_admin: boolean } }
     | { event: "ChatBroadcast"; data: { from: string; msg: string } }
     | { event: "PlayerRequest"; data: { id: string; name: string } }
     | { event: "Error"; data: { msg: string } };
+
 

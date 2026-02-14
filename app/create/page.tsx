@@ -26,7 +26,7 @@ export default function CreateGame() {
       const res = await fetch(`${baseUrl}/game/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(settings), // Changed: Wrap settings in object
       });
 
       if (!res.ok) {
