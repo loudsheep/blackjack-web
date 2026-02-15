@@ -33,8 +33,9 @@ export function Card({ card, hidden, className = "", mini = false }: CardProps) 
       <div 
         className={`
           relative flex items-center justify-center 
-          bg-background-dark border-2 border-primary/20 rounded-lg shadow-2xl overflow-hidden
+          bg-background-dark border-2 border-primary/50 rounded-lg shadow-2xl overflow-hidden
           card-shadow
+          animate-in zoom-in-50 duration-300
           ${mini ? 'w-8 h-12' : 'w-24 h-36'}
           ${className}
         `}
@@ -43,7 +44,7 @@ export function Card({ card, hidden, className = "", mini = false }: CardProps) 
             className="w-full h-full opacity-30" 
             style={{ backgroundImage: 'repeating-linear-gradient(45deg, #0df280 0px, #0df280 2px, transparent 2px, transparent 10px)' }}
         ></div>
-        <span className="absolute material-symbols-outlined text-primary text-3xl opacity-60">lock</span>
+        <span className="absolute material-symbols-outlined text-primary text-3xl opacity-80">lock</span>
       </div>
     );
   }
@@ -51,21 +52,30 @@ export function Card({ card, hidden, className = "", mini = false }: CardProps) 
   return (
     <div 
       className={`
-        relative flex flex-col p-2 text-black
-        bg-white rounded-lg border-2 border-white/10 shadow-2xl card-shadow
+        relative flex flex-col p-2
+        bg-white rounded-lg border border-white/20 shadow-xl card-shadow
         transition-transform hover:z-10
-        ${mini ? 'w-8 h-12 p-1 text-[10px]' : 'w-24 h-36 p-2'}
+        animate-in zoom-in-90 duration-300 fade-in
+        ${mini ? 'w-8 h-12 p-1' : 'w-24 h-36 p-3'}
         ${className}
       `}
     >
-      <div className={`flex flex-col text-left leading-tight ${SUIT_COLORS[card.suit]}`}>
-        <span className={`${mini ? 'text-xs' : 'text-xl'} font-black`}>{RANK_MAP[card.rank]}</span>
-        <span className={`${mini ? 'text-[10px]' : 'text-lg'}`}>{SUIT_SYMBOLS[card.suit]}</span>
+      <div className={`flex flex-col text-left leading-none ${SUIT_COLORS[card.suit]}`}>
+        <span className={`${mini ? 'text-xs' : 'text-3xl'} font-bold`}>{RANK_MAP[card.rank]}</span>
+        <span className={`${mini ? 'text-[10px]' : 'text-2xl'} mt-[-2px]`}>{SUIT_SYMBOLS[card.suit]}</span>
       </div>
       
-      <div className={`absolute inset-0 flex items-center justify-center opacity-10 select-none pointer-events-none ${SUIT_COLORS[card.suit]} ${mini ? 'text-xl' : 'text-4xl'}`}>
-          {SUIT_SYMBOLS[card.suit]}
+      {/* Center Suit */}
+      <div className={`absolute inset-0 flex items-center justify-center select-none pointer-events-none ${SUIT_COLORS[card.suit]}`}>
+          <span className={`${mini ? 'text-xl' : 'text-6xl'}`}>{SUIT_SYMBOLS[card.suit]}</span>
+      </div>
+
+      {/* Bottom Right Rank (Inverted) */}
+      <div className={`absolute bottom-2 right-2 flex flex-col items-center rotate-180 leading-none ${SUIT_COLORS[card.suit]}`}>
+        <span className={`${mini ? 'text-xs' : 'text-3xl'} font-bold`}>{RANK_MAP[card.rank]}</span>
+        <span className={`${mini ? 'text-[10px]' : 'text-2xl'} mt-[-2px]`}>{SUIT_SYMBOLS[card.suit]}</span>
       </div>
     </div>
   );
 }
+

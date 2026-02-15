@@ -20,6 +20,7 @@ export function AdminPanel({
 }: AdminPanelProps) {
     
     const [localSettings, setLocalSettings] = useState<GameSettings>(settings);
+    const [adminAmount, setAdminAmount] = useState<number>(1000);
 
     useEffect(() => {
         setLocalSettings(settings); // Sync when parent updates
@@ -30,7 +31,7 @@ export function AdminPanel({
             {/* Backdrop */}
             {isOpen && (
                 <div 
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity cursor-pointer"
                     onClick={onClose}
                 />
             )}
@@ -46,7 +47,7 @@ export function AdminPanel({
                         <h3 className="text-xl font-bold text-primary uppercase italic">Table Admin</h3>
                         <button 
                             onClick={onClose}
-                            className="material-symbols-outlined text-white/50 hover:text-white cursor-pointer"
+                            className="material-symbols-outlined text-white/50 hover:text-white cursor-pointer transition-colors"
                         >
                             close
                         </button>
@@ -82,8 +83,8 @@ export function AdminPanel({
                                      <div key={p.id} className="bg-white/5 p-3 rounded-lg border border-white/10 flex justify-between items-center">
                                          <span className="font-bold text-sm">{p.name}</span>
                                          <div className="flex gap-2">
-                                              <button onClick={() => onApprove(p.id)} className="text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 px-2 py-1 rounded border border-green-500/30">✓</button>
-                                              <button onClick={() => onKick(p.id)} className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1 rounded border border-red-500/30">✗</button>
+                                              <button onClick={() => onApprove(p.id)} className="text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 px-2 py-1 rounded border border-green-500/30 cursor-pointer">✓</button>
+                                              <button onClick={() => onKick(p.id)} className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1 rounded border border-red-500/30 cursor-pointer">✗</button>
                                          </div>
                                      </div>
                                 ))}
@@ -104,27 +105,27 @@ export function AdminPanel({
                                         onChange={(e) => setLocalSettings({...localSettings, initial_chips: parseInt(e.target.value)})}
                                     />
                                 </div>
-                                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10" onClick={() => setLocalSettings({...localSettings, approval_required: !localSettings.approval_required})}>
                                     <span className="text-sm text-gray-300">Approval Req.</span>
                                     <input 
                                         type="checkbox" 
                                         checked={localSettings.approval_required}
-                                        onChange={(e) => setLocalSettings({...localSettings, approval_required: e.target.checked})}
-                                        className="accent-primary"
+                                        readOnly
+                                        className="accent-primary cursor-pointer pointer-events-none"
                                     />
                                 </div>
-                                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10" onClick={() => setLocalSettings({...localSettings, chat_enabled: !localSettings.chat_enabled})}>
                                     <span className="text-sm text-gray-300">Enable Chat</span>
                                     <input 
                                         type="checkbox" 
                                         checked={localSettings.chat_enabled}
-                                        onChange={(e) => setLocalSettings({...localSettings, chat_enabled: e.target.checked})}
-                                        className="accent-primary"
+                                        readOnly
+                                        className="accent-primary cursor-pointer pointer-events-none"
                                     />
                                 </div>
                                 <button 
                                     onClick={() => onUpdateSettings(localSettings)}
-                                    className="w-full bg-primary hover:bg-white text-background-dark font-black uppercase py-2 rounded-lg transition-colors shadow-lg"
+                                    className="w-full bg-primary hover:bg-white text-background-dark font-black uppercase py-2 rounded-lg transition-colors shadow-lg cursor-pointer"
                                 >
                                     Save Settings
                                 </button>
@@ -133,7 +134,19 @@ export function AdminPanel({
 
                          {/* Player Management */}
                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase text-white/40 tracking-widest">Active Players</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-[10px] font-bold uppercase text-white/40 tracking-widest">Active Players</label>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-white/50">Amt:</span>
+                                    <input 
+                                        type="number" 
+                                        value={adminAmount} 
+                                        onChange={(e) => setAdminAmount(parseInt(e.target.value) || 0)}
+                                        className="w-16 bg-white/5 border border-white/10 rounded text-[10px] px-1 py-0.5 text-right outline-none focus:border-primary/50"
+                                    />
+                                </div>
+                            </div>
+                            
                             <div className="space-y-2">
                                 {players.filter(p => p.status !== 'PendingApproval').map(p => (
                                     <div key={p.id} className="bg-white/5 p-3 rounded-lg border border-white/5">
@@ -144,23 +157,13 @@ export function AdminPanel({
                                             <span className="text-xs font-mono text-primary">${p.chips}</span>
                                         </div>
                                         <div className="flex gap-2 justify-end">
-                                            <button onClick={() => onUpdateBalance(p.id, 1000)} className="text-[10px] bg-white/5 hover:bg-white/10 text-green-400 px-2 py-1 rounded border border-white/10">+1k</button>
-                                            <button onClick={() => onUpdateBalance(p.id, -1000)} className="text-[10px] bg-white/5 hover:bg-white/10 text-red-400 px-2 py-1 rounded border border-white/10">-1k</button>
-                                            <button onClick={() => onKick(p.id)} className="text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1 rounded border border-red-500/30">Kick</button>
+                                            <button onClick={() => onUpdateBalance(p.id, adminAmount)} className="text-[10px] bg-white/5 hover:bg-white/10 text-green-400 px-2 py-1 rounded border border-white/10 cursor-pointer">+{adminAmount}</button>
+                                            <button onClick={() => onUpdateBalance(p.id, -adminAmount)} className="text-[10px] bg-white/5 hover:bg-white/10 text-red-400 px-2 py-1 rounded border border-white/10 cursor-pointer">-{adminAmount}</button>
+                                            <button onClick={() => onKick(p.id)} className="text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1 rounded border border-red-500/30 cursor-pointer">Kick</button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-auto border-t border-white/5 pt-6 space-y-4">
-                        <div className="flex items-center justify-between text-xs">
-                            <span className="text-white/50">Server Load</span>
-                            <span className="text-primary font-bold">12%</span>
-                        </div>
-                        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                            <div className="w-[12%] h-full bg-primary"></div>
                         </div>
                     </div>
                 </div>
@@ -168,3 +171,4 @@ export function AdminPanel({
         </>
     );
 }
+

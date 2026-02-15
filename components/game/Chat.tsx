@@ -39,7 +39,7 @@ export function Chat({ messages, onSend, isOpen, onToggle }: ChatProps) {
                 {/* Mobile close button if needed, or just hidden on desktop */}
                 <button 
                     onClick={onToggle}
-                    className="md:hidden material-symbols-outlined text-[18px] text-white/40 hover:text-white transition-colors cursor-pointer"
+                    className="material-symbols-outlined text-[18px] text-white/40 hover:text-white transition-colors cursor-pointer"
                 >
                     close
                 </button>

@@ -7,9 +7,9 @@ import { useParams, useRouter } from "next/navigation";
 // Components
 import { Lobby } from "@/components/game/Lobby";
 import { DealerArea } from "@/components/game/DealerArea";
-import { PlayerSpot } from "@/components/game/PlayerSpot"; // Will need refactor
-import { GameControls } from "@/components/game/GameControls"; // Will need refactor
-import { Chat } from "@/components/game/Chat"; // Will need refactor
+import { PlayerSpot } from "@/components/game/PlayerSpot";
+import { GameControls } from "@/components/game/GameControls";
+import { Chat } from "@/components/game/Chat";
 import { AdminPanel } from "@/components/game/AdminPanel"; 
 
 export default function GameRoom() {
@@ -23,12 +23,17 @@ export default function GameRoom() {
   } = useBlackjack();
 
   const [hasJoined, setHasJoined] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(true);
+
+  useEffect(() => {
+      setIsClient(true);
+  }, []);
 
   // --- Auto-Join Logic ---
   useEffect(() => {
-    if (!isConnected && !hasJoined) {
+    if (!isConnected && !hasJoined && isClient) {
         const storedAuth = localStorage.getItem(`blackjack_auth_${roomId}`);
         if (storedAuth) {
              connect(roomId); 
@@ -36,54 +41,13 @@ export default function GameRoom() {
              setHasJoined(true);
         }
     }
-  }, [roomId, isConnected, hasJoined, connect]);
+  }, [roomId, isConnected, hasJoined, connect, isClient]);
 
   useEffect(() => {
     if (isConnected && myPlayerId && gameState?.players.find(p => p.id === myPlayerId) && !hasJoined) {
         setHasJoined(true);
     }
   }, [isConnected, myPlayerId, gameState, hasJoined]);
-
-  // --- Turn Timer Logic ---
-  const myPlayer = gameState?.players.find(p => p.id === myPlayerId);
-  const latestGameStateRef = useRef(gameState);
-  useEffect(() => { latestGameStateRef.current = gameState; }, [gameState]);
-  const hasAutoStoodRef = useRef(false);
-
-  useEffect(() => {
-     if (gameState?.current_turn_player_id !== myPlayerId) {
-         hasAutoStoodRef.current = false;
-     }
-
-     if (gameState?.phase === "Playing" && gameState.current_turn_player_id === myPlayerId) {
-         const timeoutSec = parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30");
-         setTimeLeft(timeoutSec);
-         
-         const timer = setInterval(() => {
-             setTimeLeft(prev => {
-                 if (prev <= 0) return 0;
-                 return prev - 0.1;
-             });
-         }, 100);
-         return () => clearInterval(timer);
-     } else {
-         setTimeLeft(0);
-     }
-  }, [gameState?.phase, gameState?.current_turn_player_id, myPlayerId, myPlayer?.hands, myPlayer?.hands?.length]);
-
-  // Auto-stand
-  useEffect(() => {
-    if (timeLeft === 0 && gameState?.phase === "Playing" && gameState?.current_turn_player_id === myPlayerId && !hasAutoStoodRef.current) {
-         const timeoutId = setTimeout(() => {
-             if (latestGameStateRef.current?.current_turn_player_id === myPlayerId && !hasAutoStoodRef.current) {
-                 console.log("Auto-standing due to timeout");
-                 hasAutoStoodRef.current = true;
-                 actions.sendGameAction("Stand");
-             }
-         }, 1000);
-         return () => clearTimeout(timeoutId);
-    }
-  }, [timeLeft, gameState?.phase, gameState?.current_turn_player_id, myPlayerId, actions]);
 
   // --- Handlers ---
   const handleJoin = (username: string) => {
@@ -114,6 +78,7 @@ export default function GameRoom() {
   }
 
   const otherPlayers = gameState.players.filter(p => p.id !== myPlayerId);
+  const myPlayer = gameState?.players.find(p => p.id === myPlayerId);
   const isMyTurn = gameState.current_turn_player_id === myPlayerId;
 
   // Helper for split logic
@@ -160,6 +125,13 @@ export default function GameRoom() {
                     </div>
                 </div>
             </div>
+            
+            {/* Phase Indicator - Centered in free space or just part of header */}
+            <div className="absolute left-1/2 transform -translate-x-1/2 hidden md:flex flex-col items-center">
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30">Current Phase</span>
+                <span className="text-sm font-black text-primary uppercase glow-primary">{gameState.phase}</span>
+            </div>
+
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3 glass-panel px-4 py-2 rounded-xl">
                     <span className="material-symbols-outlined text-primary text-[20px]">account_balance_wallet</span>
@@ -167,21 +139,26 @@ export default function GameRoom() {
                 </div>
                 <button 
                   onClick={() => setShowAdminPanel(true)}
-                  className="flex items-center justify-center p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                  className="flex items-center justify-center p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
                 >
                     <span className="material-symbols-outlined text-white">settings</span>
                 </button>
                  <button 
                     onClick={() => { actions.disconnect(); router.push('/'); }}
-                    className="flex items-center justify-center p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+                    className="flex items-center justify-center p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors cursor-pointer"
                     title="Leave Game"
                 >
                     <span className="material-symbols-outlined text-red-400">logout</span>
                 </button>
-                <div 
-                    className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/30" 
-                    style={{ backgroundImage: `url("https://ui-avatars.com/api/?name=${myPlayer?.name || 'User'}&background=0df280&color=102219")` }}
-                ></div>
+                 {/* Admin Start Button - Smaller and integrated */}
+                 {isAdmin && (gameState.phase === 'Lobby' || gameState.phase === 'Betting') && (
+                     <button 
+                        onClick={actions.startGame} 
+                        className="ml-4 px-4 py-2 bg-primary text-background-dark font-bold text-xs rounded-lg shadow-lg hover:bg-white transition-colors cursor-pointer"
+                     >
+                         {gameState.phase === 'Betting' ? 'FORCE DEAL' : 'START'}
+                     </button>
+                 )}
             </div>
         </header>
 
@@ -190,7 +167,7 @@ export default function GameRoom() {
             <div className="absolute inset-0 z-0 opacity-40" style={{ background: 'radial-gradient(circle at 50% 120%, rgba(13, 242, 128, 0.15) 0%, transparent 70%)' }}></div>
 
             {/* Sidebar Left: Other Players */}
-            <aside className="absolute left-8 top-28 bottom-8 w-64 flex flex-col gap-4 z-40">
+            <aside className="absolute left-8 top-28 bottom-8 w-64 flex flex-col gap-4 z-40 hidden md:flex">
                 <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary/60 px-2 mb-2">Live Table Status</div>
                 <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar flex-1 pb-4">
                     {otherPlayers.map(p => (
@@ -199,7 +176,6 @@ export default function GameRoom() {
                             player={p} 
                             isMe={false} 
                             isCurrentTurn={gameState.current_turn_player_id === p.id}
-                            turnDuration={parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30")}
                         />
                     ))}
                     {otherPlayers.length === 0 && (
@@ -209,58 +185,53 @@ export default function GameRoom() {
             </aside>
 
             {/* Sidebar Right: Chat */}
-            <aside className="absolute right-8 bottom-8 w-72 h-[450px] flex flex-col z-40 pointer-events-none md:pointer-events-auto">
+            <aside className={`absolute right-8 bottom-8 flex flex-col z-40 transition-all duration-300 hidden md:flex ${isChatOpen ? 'w-72 h-[450px]' : 'w-auto h-auto'}`}>
                  {gameState.settings.chat_enabled && (
-                    <Chat 
-                        isOpen={true} // Always open in this layout
-                        onToggle={() => {}} // No toggle needed
-                        messages={chatMessages}
-                        onSend={actions.sendChat}
-                    />
+                    isChatOpen ? (
+                        <Chat 
+                            isOpen={true}
+                            onToggle={() => setIsChatOpen(false)}
+                            messages={chatMessages}
+                            onSend={actions.sendChat}
+                        />
+                    ) : (
+                        <button 
+                            onClick={() => setIsChatOpen(true)}
+                            className="glass-panel size-14 rounded-full flex items-center justify-center hover:bg-white/10 transition-transform hover:scale-110 active:scale-95 shadow-lg cursor-pointer border border-white/10"
+                            title="Open Chat"
+                        >
+                            <span className="material-symbols-outlined text-white text-2xl">chat</span>
+                            {/* Unread badge could go here if we tracked unread count */}
+                        </button>
+                    )
                 )}
             </aside>
 
             {/* Main Central Table Area */}
-            <div className="flex flex-col items-center justify-between h-[85%] w-full max-w-5xl z-10 px-4">
+            <div className="flex flex-col items-center justify-between h-[85%] w-full max-w-5xl px-4 pointer-events-none">
                 
                 {/* Dealer Section */}
-                <DealerArea dealerHand={gameState.dealer_hand} phase={gameState.phase} />
+                <div className="pointer-events-auto w-full flex justify-center">
+                    <DealerArea dealerHand={gameState.dealer_hand} phase={gameState.phase} />
+                </div>
 
                 {/* Active Player Hands (Center) */}
-                <div className="flex gap-20 items-end pb-12 flex-1 justify-center">
+                <div className="flex gap-20 items-end pb-12 flex-1 justify-center z-10 pointer-events-auto">
                     {myPlayer && (
                         <PlayerSpot 
                             player={myPlayer} 
                             isMe={true} 
                             isCurrentTurn={isMyTurn}
-                            turnDuration={parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30")}
                         />
                     )}
-                    
-                     {/* Admin Start Button Overlay */}
-                     {isAdmin && (gameState.phase === 'Lobby' || gameState.phase === 'Betting') && (
-                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
-                             <button 
-                                onClick={actions.startGame} 
-                                className={`
-                                   px-8 py-3 rounded-xl font-black shadow-[0_0_20px_rgba(13,242,128,0.4)] transition-transform hover:scale-105 cursor-pointer border border-primary/20
-                                   ${gameState.phase === 'Betting' ? 'bg-primary hover:bg-white text-background-dark' : 'bg-primary hover:bg-white text-background-dark'}
-                                `}
-                             >
-                                 {gameState.phase === 'Betting' ? 'DEAL CARDS (FORCE)' : 'START GAME'}
-                             </button>
-                         </div>
-                     )}
                 </div>
 
                 {/* Action Controls & Betting HUD */}
-                <div className="w-full flex flex-col items-center gap-8 mb-4 min-h-[140px]">
+                <div className="w-full flex flex-col items-center gap-8 mb-4 min-h-[140px] relative z-50 pointer-events-auto">
                     <GameControls 
                         isMyTurn={isMyTurn}
                         canSplit={canSplit}
                         canDouble={canDouble}
-                        timeLeft={timeLeft}
-                        totalTime={parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30")}
                         onAction={handleGameAction}
                         phase={gameState.phase}
                         myPlayer={myPlayer}
@@ -283,15 +254,15 @@ export default function GameRoom() {
             onApprove={actions.approvePlayer}
         />
         
-        {/* Payout Notification - Re-styled */}
+        {/* Payout Notification - Moved to bottom center to avoid blocking dealer */}
          {gameState.phase === "Payout" && (
-            <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-50 glass-panel px-12 py-6 rounded-2xl animate-fade-in-down text-center border-primary/30 glow-primary">
+            <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-50 glass-panel px-12 py-6 rounded-2xl animate-fade-in-down text-center border-primary/30 glow-primary">
                 <h2 className="text-3xl font-black text-primary uppercase tracking-widest mb-1 italic">Round Over</h2>
                 <div className="text-white/70 text-sm font-mono">Payouts Completed</div>
                 {isAdmin && (
                     <button 
                         onClick={actions.nextRound}
-                        className="mt-4 bg-white/10 hover:bg-white/20 text-white px-8 py-2 rounded-lg font-bold text-sm border border-white/10 transition-colors uppercase tracking-wider"
+                        className="mt-4 bg-white/10 hover:bg-white/20 text-white px-8 py-2 rounded-lg font-bold text-sm border border-white/10 transition-colors uppercase tracking-wider cursor-pointer"
                     >
                         Next Round
                     </button>

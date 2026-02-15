@@ -1,6 +1,12 @@
-import { Player } from "@/app/types";
+import { Player, Rank } from "@/app/types";
 import { Hand } from "./Hand";
 import { calculateHandValue } from "../../utils/gameUtils";
+
+const RANK_MAP: Record<string, string> = {
+  Two: "2", Three: "3", Four: "4", Five: "5", Six: "6",
+  Seven: "7", Eight: "8", Nine: "9", Ten: "10",
+  Jack: "J", Queen: "Q", King: "K", Ace: "A",
+};
 
 interface PlayerSpotProps {
   player: Player;
@@ -49,8 +55,6 @@ export function PlayerSpot({ player, isMe, isCurrentTurn, turnDuration = 30 }: P
   }
 
   // --- Other Player Layout (Sidebar) ---
-  // If player has multiple hands, we might just show them stacked or side-by-side in the sidebar card.
-  // For simplicity, let's just show the first hand or a summary.
   const primaryHand = hands[0];
   let primaryCards: any[] = [];
   let primaryScore = 0;
@@ -84,7 +88,7 @@ export function PlayerSpot({ player, isMe, isCurrentTurn, turnDuration = 30 }: P
         <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-1">
              {primaryCards.map((card: any, idx: number) => (
                  <div key={idx} className="w-8 h-12 bg-white rounded-sm border border-black/10 flex flex-col items-center justify-center text-black font-bold text-[10px]">
-                     {card.rank === 'Ten' ? '10' : card.rank.charAt(0)}
+                     {RANK_MAP[card.rank] || card.rank.charAt(0)}
                      <span className={['Hearts', 'Diamonds'].includes(card.suit) ? 'text-red-600' : 'text-black'}>
                          {card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Spades' ? '♠' : '♣'}
                      </span>
