@@ -35,16 +35,28 @@ export function PlayerSpot({ player, isMe, isCurrentTurn, turnDuration = 30 }: P
                      bet = handObj.bet;
                  }
 
+                 const isHandActive = isCurrentTurn && index === player.active_hand_index;
+                 const isMultiHand = hands.length > 1;
+
                  return (
-                     <div key={index} className="flex flex-col items-center gap-4 group">
+                     <div 
+                        key={index} 
+                        className={`
+                            flex flex-col items-center gap-4 group transition-all duration-300
+                            ${isMultiHand && !isHandActive ? 'opacity-40 scale-90 blur-[1px]' : 'opacity-100 scale-100'}
+                        `}
+                     >
                          <Hand 
                             cards={cards}
                             score={calculateHandValue(cards)}
                             status={status as any}
                             bet={bet}
-                            isActive={isCurrentTurn && index === player.active_hand_index}
+                            isActive={isHandActive}
                          />
-                         <div className="text-[10px] font-bold text-primary uppercase mt-1 tracking-widest">
+                         <div className={`
+                            text-[10px] font-bold uppercase mt-1 tracking-widest transition-colors
+                            ${isHandActive ? 'text-primary animate-pulse' : 'text-white/30'}
+                         `}>
                              {hands.length > 1 ? `Hand ${index + 1}` : 'Main Hand'}
                          </div>
                      </div>

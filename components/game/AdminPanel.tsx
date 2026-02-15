@@ -20,11 +20,18 @@ export function AdminPanel({
 }: AdminPanelProps) {
     
     const [localSettings, setLocalSettings] = useState<GameSettings>(settings);
-    const [adminAmount, setAdminAmount] = useState<number>(1000);
+    const [adminAmount, setAdminAmount] = useState<number>(100);
+    const [saveFeedback, setSaveFeedback] = useState("");
 
     useEffect(() => {
         setLocalSettings(settings); // Sync when parent updates
     }, [settings]);
+
+    const handleSave = () => {
+        onUpdateSettings(localSettings);
+        setSaveFeedback("Saved!");
+        setTimeout(() => setSaveFeedback(""), 2000);
+    };
 
     return (
         <>
@@ -63,15 +70,15 @@ export function AdminPanel({
                                     className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 flex items-center justify-center gap-3 transition-colors cursor-pointer"
                                 >
                                     <span className="material-symbols-outlined text-[20px] text-green-400">play_circle</span>
-                                    <span className="text-sm font-bold uppercase">Force Start</span>
+                                    <span className="text-sm font-bold uppercase">Force Skip Players</span>
                                 </button>
-                                <button 
+                                {/* <button 
                                     onClick={onNextRound} 
                                     className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 flex items-center justify-center gap-3 transition-colors cursor-pointer"
                                 >
                                     <span className="material-symbols-outlined text-[20px] text-blue-400">skip_next</span>
                                     <span className="text-sm font-bold uppercase">Force Next Round</span>
-                                </button>
+                                </button> */}
                             </div>
                         </div>
 
@@ -124,10 +131,10 @@ export function AdminPanel({
                                     />
                                 </div>
                                 <button 
-                                    onClick={() => onUpdateSettings(localSettings)}
-                                    className="w-full bg-primary hover:bg-white text-background-dark font-black uppercase py-2 rounded-lg transition-colors shadow-lg cursor-pointer"
+                                    onClick={handleSave}
+                                    className={`w-full font-black uppercase py-2 rounded-lg transition-all shadow-lg cursor-pointer ${saveFeedback ? 'bg-green-500 text-white' : 'bg-primary hover:bg-white text-background-dark'}`}
                                 >
-                                    Save Settings
+                                    {saveFeedback || "Save Settings"}
                                 </button>
                             </div>
                         </div>

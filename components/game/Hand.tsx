@@ -42,10 +42,11 @@ export function Hand({ cards, score, status, isActive, bet, className = "", isDe
       <div className={`
         relative flex items-center justify-center
         min-w-[80px] min-h-[100px] sm:min-w-[100px] sm:min-h-[120px]
-        rounded-xl p-2 transition-all duration-300
-        ${isActive && !isDealer ? 'bg-white/5' : ''}
+        rounded-xl p-2 transition-all duration-300 border-2
+        ${getBorderColor()}
+        ${isActive && !isDealer ? 'bg-white/10 scale-105 z-10' : ''}
       `}>
-         <div className={`flex ${isDealer ? 'gap-4' : '-space-x-12 hover:-space-x-8'} transition-all duration-300`}>
+         <div className={`flex ${isDealer ? 'gap-4' : '-space-x-12'} transition-all duration-300`}>
             {cards.map((card, idx) => (
                 <div 
                     key={idx} 
@@ -55,7 +56,13 @@ export function Hand({ cards, score, status, isActive, bet, className = "", isDe
                         transform: !isDealer ? `rotate(${(idx - (cards.length - 1) / 2) * 5}deg)` : 'none' // Fan effect only for players
                     }}
                 >
-                    <Card card={card} />
+                    <Card 
+                        card={card} 
+                        style={{ 
+                            animationDelay: `${idx * (isDealer ? 300 : 100)}ms`,
+                            animationFillMode: 'backwards' 
+                        }}
+                    />
                 </div>
             ))}
             {cards.length === 0 && (

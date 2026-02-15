@@ -105,16 +105,17 @@ export default function GameRoom() {
         </div>
 
         {/* Top Navigation Bar */}
-        <header className="fixed top-0 w-full z-50 flex items-center justify-between px-8 py-4 glass-panel border-b border-white/5">
-            <div className="flex items-center gap-6">
+        <header className="fixed top-0 w-full z-50 flex items-center justify-between px-4 sm:px-8 py-3 glass-panel border-b border-white/5">
+            <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="bg-primary p-1.5 rounded-lg">
+                    <div className="bg-primary p-1.5 rounded-lg shrink-0">
                         <span className="material-symbols-outlined text-background-dark font-bold">playing_cards</span>
                     </div>
-                    <h2 className="text-xl font-bold tracking-tight text-white uppercase italic">VIP Blackjack</h2>
+                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white uppercase italic hidden sm:block">VIP Blackjack</h2>
                 </div>
-                <div className="h-6 w-px bg-white/10"></div>
-                <div className="flex items-center gap-6 text-xs font-medium tracking-widest text-white/50 uppercase">
+                <div className="h-6 w-px bg-white/10 hidden md:block"></div>
+                {/* Info Section - Hidden on mobile/tablet to save space */}
+                <div className="hidden md:flex items-center gap-6 text-xs font-medium tracking-widest text-white/50 uppercase">
                     <div className="flex items-center gap-2">
                         <span className={`size-2 rounded-full ${latency && latency < 100 ? 'bg-primary' : 'bg-yellow-500'} animate-pulse`}></span>
                         <span>Ping: {latency || '--'}ms</span>
@@ -126,35 +127,44 @@ export default function GameRoom() {
                 </div>
             </div>
             
-            {/* Phase Indicator - Centered in free space or just part of header */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 hidden md:flex flex-col items-center">
+            {/* Phase Indicator - visible on md+ */}
+            <div className="absolute left-1/2 transform -translate-x-1/2 hidden lg:flex flex-col items-center pointer-events-none">
                 <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30">Current Phase</span>
                 <span className="text-sm font-black text-primary uppercase glow-primary">{gameState.phase}</span>
             </div>
 
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 glass-panel px-4 py-2 rounded-xl">
-                    <span className="material-symbols-outlined text-primary text-[20px]">account_balance_wallet</span>
-                    <span className="text-white font-bold">${myPlayer?.chips.toFixed(2) || '0.00'}</span>
+            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                {/* Mobile Phase (Small) */}
+                <div className="lg:hidden flex flex-col items-end mr-2">
+                     <span className="text-[10px] font-black text-primary uppercase">{gameState.phase}</span>
                 </div>
+
+                <div className="flex items-center gap-2 glass-panel px-3 py-1.5 rounded-xl">
+                    <span className="material-symbols-outlined text-primary text-[18px]">account_balance_wallet</span>
+                    <span className="text-white font-bold text-sm">${myPlayer?.chips.toFixed(0)}</span>
+                </div>
+                
+                {isAdmin && (
                 <button 
                   onClick={() => setShowAdminPanel(true)}
-                  className="flex items-center justify-center p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                  className="flex items-center justify-center p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer shrink-0"
                 >
-                    <span className="material-symbols-outlined text-white">settings</span>
+                    <span className="material-symbols-outlined text-white text-[20px]">settings</span>
                 </button>
+                )}
                  <button 
                     onClick={() => { actions.disconnect(); router.push('/'); }}
-                    className="flex items-center justify-center p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors cursor-pointer"
+                    className="flex items-center justify-center p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors cursor-pointer shrink-0"
                     title="Leave Game"
                 >
-                    <span className="material-symbols-outlined text-red-400">logout</span>
+                    <span className="material-symbols-outlined text-red-400 text-[20px]">logout</span>
                 </button>
-                 {/* Admin Start Button - Smaller and integrated */}
+                 
+                 {/* Admin Start - Responsive */}
                  {isAdmin && (gameState.phase === 'Lobby' || gameState.phase === 'Betting') && (
                      <button 
                         onClick={actions.startGame} 
-                        className="ml-4 px-4 py-2 bg-primary text-background-dark font-bold text-xs rounded-lg shadow-lg hover:bg-white transition-colors cursor-pointer"
+                        className="ml-2 px-3 py-1.5 bg-primary text-background-dark font-bold text-[10px] sm:text-xs rounded-lg shadow-lg hover:bg-white transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                      >
                          {gameState.phase === 'Betting' ? 'FORCE DEAL' : 'START'}
                      </button>
