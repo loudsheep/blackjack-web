@@ -631,17 +631,44 @@ export default function GameRoom() {
                    </div>
 
                    {/* Pending Requests */}
-                   {gameState.settings.approval_required && pendingRequests.length > 0 && (
-                       <div className="mb-4">
-                           <h4 className="text-xs uppercase text-gray-400 mb-2">Pending Requests</h4>
-                           {pendingRequests.map(req => (
-                               <div key={req.id} className="flex justify-between items-center bg-gray-700 p-2 rounded mb-1">
-                                   <span className="text-sm">{req.name}</span>
-                                   <button onClick={() => actions.approvePlayer(req.id)} className="text-xs bg-green-600 px-2 py-1 rounded">Approve</button>
+                   {(() => {
+                       // We derive pending requests directly from the player list to ensure it persists 
+                       // across reloads and syncs with game state, rather than relying on transient events.
+                       const pendingPlayers = gameState.players.filter(p => p.status === 'PendingApproval');
+                       
+                       if (gameState.settings.approval_required && pendingPlayers.length > 0) {
+                           return (
+                               <div className="mb-4 p-2 bg-yellow-900/20 border border-yellow-600/30 rounded">
+                                   <h4 className="text-xs uppercase text-yellow-500 font-bold mb-2 flex items-center gap-1">
+                                       <span className="animate-pulse">●</span> Pending Requests ({pendingPlayers.length})
+                                   </h4>
+                                   {pendingPlayers.map(p => (
+                                       <div key={p.id} className="flex justify-between items-center bg-black/40 p-2 rounded mb-1 border border-gray-700">
+                                           <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-white">{p.name}</span>
+                                                <span className="text-[10px] text-gray-500">{p.id.split('-')[0]}...</span>
+                                           </div>
+                                           <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => actions.approvePlayer(p.id)} 
+                                                    className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded font-bold transition-colors"
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button 
+                                                    onClick={() => actions.kickPlayer(p.id)} 
+                                                    className="text-xs bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-800 px-2 py-1 rounded transition-colors"
+                                                >
+                                                    Deny
+                                                </button>
+                                           </div>
+                                       </div>
+                                   ))}
                                </div>
-                           ))}
-                       </div>
-                   )}
+                           );
+                       }
+                       return null; 
+                   })()}
 
                    {/* Player Management */}
                    <div className="space-y-2">
