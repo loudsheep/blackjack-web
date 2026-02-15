@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { 
     ClientAction, ServerEvent, GameState, Player, ChatMessage, PlayerRequest, GameSettings 
-} from '../types';
+} from '@/app/types';
 
 export interface Toast {
     id: string;
