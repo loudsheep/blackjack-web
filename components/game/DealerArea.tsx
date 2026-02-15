@@ -13,48 +13,47 @@ export function DealerArea({ dealerHand, phase }: DealerAreaProps) {
 
   // If dealer has 1 card visible, we typically show a hidden card next to it
   // unless the game is over or in a phase where we shouldn't.
-  // In standard blackjack, dealer peaks or deals one down.
   const showHiddenCard = dealerHand.length === 1 && phase !== "GameOver" && phase !== "Payout";
 
   return (
-    <div className="flex flex-col items-center justify-center py-8 relative w-full">
-       <div className="text-yellow-500/30 text-xs font-black uppercase tracking-widest mb-2 select-none">
-          Dealer
-       </div>
+    <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-2 text-xs font-bold tracking-[0.3em] uppercase text-white/40">
+            <span className="w-8 h-[1px] bg-white/10"></span>
+            Dealer Hand
+            <span className="w-8 h-[1px] bg-white/10"></span>
+        </div>
        
-       <div className="flex items-center justify-center gap-4 relative z-10 scale-90 sm:scale-100">
+       <div className="flex items-center justify-center gap-4 relative z-10">
            {/* Visible Hand */}
            <Hand 
                cards={dealerHand} 
                score={score} 
-               status={phase === "DealerTurn" ? "Playing" : undefined} // Maybe highlight if turn?
+               status={phase === "DealerTurn" ? "Playing" : undefined}
                isActive={phase === "DealerTurn"}
+               isDealer={true}
            />
 
            {/* Hidden Card Visualization */}
            {showHiddenCard && (
-               <div className="relative -ml-12 sm:-ml-16 transform translate-y-2 z-[-1] animate-fade-in">
+               <div className="relative -ml-12 transform translate-y-2 z-[-1] animate-fade-in">
                    <Card 
-                     card={{ suit: 'Spades', rank: 'Ace' }} // Dummy card prop since it's hidden
+                     card={{ suit: 'Spades', rank: 'Ace' }} // Dummy card
                      hidden={true} 
                    />
                </div>
            )}
        </div>
 
-       {/* Dealer Status Message */}
-       <div className="mt-4 h-6 text-center">
-           {phase === "DealerTurn" && (
-               <div className="text-yellow-400 font-bold animate-pulse text-sm uppercase tracking-wide">
-                   Dealer's Turn...
-               </div>
-           )}
-           {phase === "GameOver" && (
-               <div className="text-gray-400 text-xs">
-                   Round Over
-               </div>
-           )}
-       </div>
+       {phase === "DealerTurn" && (
+           <div className="glass-panel px-4 py-1 rounded-full text-xs font-bold text-primary animate-pulse">
+                Dealer's Turn
+           </div>
+       )}
+        {phase === "GameOver" && (
+           <div className="glass-panel px-4 py-1 rounded-full text-xs font-bold text-white/50">
+                Round Over
+           </div>
+       )}
     </div>
   );
 }

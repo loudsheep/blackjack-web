@@ -10,8 +10,8 @@ const SUIT_SYMBOLS: Record<Suit, string> = {
 const SUIT_COLORS: Record<Suit, string> = {
   Hearts: "text-red-600",
   Diamonds: "text-red-600",
-  Clubs: "text-slate-900",
-  Spades: "text-slate-900",
+  Clubs: "text-black",
+  Spades: "text-black",
 };
 
 const RANK_MAP: Record<Rank, string> = {
@@ -33,15 +33,17 @@ export function Card({ card, hidden, className = "", mini = false }: CardProps) 
       <div 
         className={`
           relative flex items-center justify-center 
-          bg-blue-900 border-2 border-blue-400/50 rounded-lg shadow-xl
-          bg-blue-900 border-2 border-blue-400/50 rounded-lg shadow-xl
-          bg-[repeating-linear-gradient(45deg,_#1e3a8a_0,_#1e3a8a_10px,_#172554_10px,_#172554_20px)]
-          ${mini ? 'w-8 h-12' : 'w-16 h-24 sm:w-20 sm:h-28'}
+          bg-background-dark border-2 border-primary/20 rounded-lg shadow-2xl overflow-hidden
+          card-shadow
+          ${mini ? 'w-8 h-12' : 'w-24 h-36'}
           ${className}
         `}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-black/20 rounded-lg pointer-events-none" />
-        <span className={`${mini ? 'text-xs' : 'text-2xl'} text-blue-200/50`}>?</span>
+        <div 
+            className="w-full h-full opacity-30" 
+            style={{ backgroundImage: 'repeating-linear-gradient(45deg, #0df280 0px, #0df280 2px, transparent 2px, transparent 10px)' }}
+        ></div>
+        <span className="absolute material-symbols-outlined text-primary text-3xl opacity-60">lock</span>
       </div>
     );
   }
@@ -49,30 +51,21 @@ export function Card({ card, hidden, className = "", mini = false }: CardProps) 
   return (
     <div 
       className={`
-        relative flex flex-col items-center justify-between
-        bg-white rounded-lg shadow-xl select-none overflow-hidden
+        relative flex flex-col p-2 text-black
+        bg-white rounded-lg border-2 border-white/10 shadow-2xl card-shadow
         transition-transform hover:z-10
-        ${mini ? 'w-8 h-12 p-1' : 'w-16 h-24 sm:w-20 sm:h-28 p-2'}
+        ${mini ? 'w-8 h-12 p-1 text-[10px]' : 'w-24 h-36 p-2'}
         ${className}
       `}
     >
-      {/* Top Left Rank */}
-      <div className={`self-start leading-none font-bold ${SUIT_COLORS[card.suit]} ${mini ? 'text-[10px]' : 'text-sm sm:text-lg'}`}>
-        {RANK_MAP[card.rank]}
+      <div className={`flex flex-col text-left leading-tight ${SUIT_COLORS[card.suit]}`}>
+        <span className={`${mini ? 'text-xs' : 'text-xl'} font-black`}>{RANK_MAP[card.rank]}</span>
+        <span className={`${mini ? 'text-[10px]' : 'text-lg'}`}>{SUIT_SYMBOLS[card.suit]}</span>
       </div>
-
-      {/* Center Suit */}
-      <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 ${SUIT_COLORS[card.suit]} ${mini ? 'text-base' : 'text-2xl sm:text-4xl'}`}>
-        {SUIT_SYMBOLS[card.suit]}
+      
+      <div className={`absolute inset-0 flex items-center justify-center opacity-10 select-none pointer-events-none ${SUIT_COLORS[card.suit]} ${mini ? 'text-xl' : 'text-4xl'}`}>
+          {SUIT_SYMBOLS[card.suit]}
       </div>
-
-      {/* Bottom Right Rank (Rotated) */}
-      <div className={`self-end leading-none font-bold transform rotate-180 ${SUIT_COLORS[card.suit]} ${mini ? 'text-[10px]' : 'text-sm sm:text-lg'}`}>
-        {RANK_MAP[card.rank]}
-      </div>
-
-      {/* Gloss/Shine Effect */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/30 to-white/10 pointer-events-none" />
     </div>
   );
 }

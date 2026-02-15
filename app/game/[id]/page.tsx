@@ -1,18 +1,16 @@
 "use client";
 
 import { useBlackjack } from "../../../hooks/useBlackjack";
-// import { GameSettings } from "../../types"; // Removed unused import
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 // Components
 import { Lobby } from "@/components/game/Lobby";
 import { DealerArea } from "@/components/game/DealerArea";
-import { PlayerSpot } from "@/components/game/PlayerSpot";
-import { GameControls } from "@/components/game/GameControls";
-import { Chat } from "@/components/game/Chat";
-// import { PayoutModal } from "@/components/game/PayoutModal"; // Removed per user request
-import { AdminPanel } from "@/components/game/AdminPanel"; // New Import
+import { PlayerSpot } from "@/components/game/PlayerSpot"; // Will need refactor
+import { GameControls } from "@/components/game/GameControls"; // Will need refactor
+import { Chat } from "@/components/game/Chat"; // Will need refactor
+import { AdminPanel } from "@/components/game/AdminPanel"; 
 
 export default function GameRoom() {
   const params = useParams();
@@ -25,7 +23,6 @@ export default function GameRoom() {
   } = useBlackjack();
 
   const [hasJoined, setHasJoined] = useState(false);
-  const [showChat, setShowChat] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
@@ -60,12 +57,6 @@ export default function GameRoom() {
 
      if (gameState?.phase === "Playing" && gameState.current_turn_player_id === myPlayerId) {
          const timeoutSec = parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30");
-         // Only reset timer if not already running for this turn - use a ref or check if timeLeft is 0?
-         // Actually, if dependencies change (e.g. gameState updates due to hand change), we might want to reset?
-         // But resetting on every gameState update is bad.
-         // Let's assume the effect logic is intended to reset on turn start.
-         // To fix the warning, we'll suppress it or refactor. 
-         // But since this is specific user request, maybe just fix unused vars and typos.
          setTimeLeft(timeoutSec);
          
          const timer = setInterval(() => {
@@ -78,7 +69,7 @@ export default function GameRoom() {
      } else {
          setTimeLeft(0);
      }
-  }, [gameState?.phase, gameState?.current_turn_player_id, myPlayerId, myPlayer?.hands, myPlayer?.hands?.length]); // Added hand dependencies to reset on Hit/Split
+  }, [gameState?.phase, gameState?.current_turn_player_id, myPlayerId, myPlayer?.hands, myPlayer?.hands?.length]);
 
   // Auto-stand
   useEffect(() => {
@@ -116,7 +107,7 @@ export default function GameRoom() {
 
   if (!gameState) {
       return (
-          <div className="min-h-screen bg-black flex items-center justify-center text-yellow-500 animate-pulse font-mono">
+          <div className="min-h-screen bg-background-dark flex items-center justify-center text-primary animate-pulse font-mono">
               CONNECTING TO CASINO...
           </div>
       );
@@ -137,11 +128,10 @@ export default function GameRoom() {
   const canDouble = (myPlayer?.chips || 0) >= activeHandBet && activeHandCards.length === 2;
 
   return (
-    <main className="min-h-screen relative overflow-hidden font-sans select-none bg-black text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-green-900 via-green-950 to-black z-0 pointer-events-none" />
+    <body className="bg-background-light dark:bg-background-dark font-display text-white overflow-hidden h-screen select-none">
         
-        {/* Toast Container */}
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center gap-2 w-full max-w-md pointer-events-none">
+        {/* Toast Container - kept from original */}
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-full max-w-md pointer-events-none">
              {toasts.map(toast => (
                  <div key={toast.id} className={`px-6 py-3 rounded-full shadow-2xl text-sm font-bold animate-fade-in-down border border-white/10 ${toast.type === 'error' ? 'bg-red-600/90 text-white' : 'bg-blue-600/90 text-white'}`}>
                      {toast.msg}
@@ -149,178 +139,136 @@ export default function GameRoom() {
              ))}
         </div>
 
-        {/* Header */}
-        <header className="relative z-20 flex justify-between items-center p-4 bg-black/20 backdrop-blur-sm border-b border-white/5 h-16">
-            <div className="flex items-center gap-4">
-                <div className="text-yellow-500 font-black text-xl tracking-tighter">
-                   ♠️ VIP BLACKJACK
+        {/* Top Navigation Bar */}
+        <header className="fixed top-0 w-full z-50 flex items-center justify-between px-8 py-4 glass-panel border-b border-white/5">
+            <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3">
+                    <div className="bg-primary p-1.5 rounded-lg">
+                        <span className="material-symbols-outlined text-background-dark font-bold">playing_cards</span>
+                    </div>
+                    <h2 className="text-xl font-bold tracking-tight text-white uppercase italic">VIP Blackjack</h2>
                 </div>
-                <div className="text-xs text-gray-500 font-mono hidden sm:block">
-                    ID: {roomId}
-                </div>
-                <div className="text-xs px-2 py-0.5 rounded bg-white/10 text-white/70 uppercase tracking-widest border border-white/5">
-                    {gameState.phase}
+                <div className="h-6 w-px bg-white/10"></div>
+                <div className="flex items-center gap-6 text-xs font-medium tracking-widest text-white/50 uppercase">
+                    <div className="flex items-center gap-2">
+                        <span className={`size-2 rounded-full ${latency && latency < 100 ? 'bg-primary' : 'bg-yellow-500'} animate-pulse`}></span>
+                        <span>Ping: {latency || '--'}ms</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[14px]">confirmation_number</span>
+                        <span>Room: <span className="text-white">{roomId}</span></span>
+                    </div>
                 </div>
             </div>
-
             <div className="flex items-center gap-4">
-               {latency !== null && (
-                   <div className={`text-[10px] font-mono ${latency < 100 ? 'text-green-500' : 'text-red-500'}`}>
-                       {latency}ms
-                   </div>
-               )}
-               {isAdmin && (
-                   <button 
-                       onClick={() => setShowAdminPanel(true)}
-                       className="text-xs bg-yellow-600/80 hover:bg-yellow-500 text-black px-3 py-1 rounded font-bold transition-colors cursor-pointer"
-                   >
-                       ADMIN
-                   </button>
-               )}
-               <button 
-                   onClick={() => setShowChat(!showChat)}
-                   className="sm:hidden text-2xl cursor-pointer"
-               >
-                   💬
-               </button>
-               <button 
-                   onClick={() => { actions.disconnect(); router.push('/'); }}
-                   className="text-xs bg-red-900/30 hover:bg-red-800/50 text-red-400 border border-red-800/50 px-3 py-1 rounded transition-colors cursor-pointer"
-               >
-                   LEAVE
-               </button>
+                <div className="flex items-center gap-3 glass-panel px-4 py-2 rounded-xl">
+                    <span className="material-symbols-outlined text-primary text-[20px]">account_balance_wallet</span>
+                    <span className="text-white font-bold">${myPlayer?.chips.toFixed(2) || '0.00'}</span>
+                </div>
+                <button 
+                  onClick={() => setShowAdminPanel(true)}
+                  className="flex items-center justify-center p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                    <span className="material-symbols-outlined text-white">settings</span>
+                </button>
+                 <button 
+                    onClick={() => { actions.disconnect(); router.push('/'); }}
+                    className="flex items-center justify-center p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+                    title="Leave Game"
+                >
+                    <span className="material-symbols-outlined text-red-400">logout</span>
+                </button>
+                <div 
+                    className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/30" 
+                    style={{ backgroundImage: `url("https://ui-avatars.com/api/?name=${myPlayer?.name || 'User'}&background=0df280&color=102219")` }}
+                ></div>
             </div>
         </header>
 
-        {/* Game Table */}
-        <div className="relative z-10 flex-1 flex flex-col h-[calc(100vh-64px)] transition-all">
-            <div className="flex-none">
+        <main className="relative h-full w-full flex items-center justify-center pt-20">
+            {/* Background Felt/Table Pattern (Abstract Gradient) */}
+            <div className="absolute inset-0 z-0 opacity-40" style={{ background: 'radial-gradient(circle at 50% 120%, rgba(13, 242, 128, 0.15) 0%, transparent 70%)' }}></div>
+
+            {/* Sidebar Left: Other Players */}
+            <aside className="absolute left-8 top-28 bottom-8 w-64 flex flex-col gap-4 z-40">
+                <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary/60 px-2 mb-2">Live Table Status</div>
+                <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar flex-1 pb-4">
+                    {otherPlayers.map(p => (
+                        <PlayerSpot 
+                            key={p.id}
+                            player={p} 
+                            isMe={false} 
+                            isCurrentTurn={gameState.current_turn_player_id === p.id}
+                            turnDuration={parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30")}
+                        />
+                    ))}
+                    {otherPlayers.length === 0 && (
+                        <div className="text-white/30 text-xs italic px-4">Waiting for players...</div>
+                    )}
+                </div>
+            </aside>
+
+            {/* Sidebar Right: Chat */}
+            <aside className="absolute right-8 bottom-8 w-72 h-[450px] flex flex-col z-40 pointer-events-none md:pointer-events-auto">
+                 {gameState.settings.chat_enabled && (
+                    <Chat 
+                        isOpen={true} // Always open in this layout
+                        onToggle={() => {}} // No toggle needed
+                        messages={chatMessages}
+                        onSend={actions.sendChat}
+                    />
+                )}
+            </aside>
+
+            {/* Main Central Table Area */}
+            <div className="flex flex-col items-center justify-between h-[85%] w-full max-w-5xl z-10 px-4">
+                
+                {/* Dealer Section */}
                 <DealerArea dealerHand={gameState.dealer_hand} phase={gameState.phase} />
-            </div>
 
-            {/* Sidebar for Other Players */}
-            <div className="absolute left-0 top-16 bottom-0 w-64 p-4 overflow-y-auto custom-scrollbar z-20 hidden md:flex flex-col gap-4 bg-black/20 backdrop-blur-sm border-r border-white/5">
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Other Players</div>
-                {otherPlayers.map(p => (
-                    <div key={p.id} className="scale-75 origin-top-left mb-[-2rem]">
+                {/* Active Player Hands (Center) */}
+                <div className="flex gap-20 items-end pb-12 flex-1 justify-center">
+                    {myPlayer && (
                         <PlayerSpot 
-                            player={p} 
-                            isMe={false} 
-                            isCurrentTurn={gameState.current_turn_player_id === p.id}
+                            player={myPlayer} 
+                            isMe={true} 
+                            isCurrentTurn={isMyTurn}
                             turnDuration={parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30")}
                         />
-                    </div>
-                ))}
-            </div>
-
-            {/* Mobile: Horizontal Scroll for Other Players (keep for small screens) */}
-            <div className="md:hidden flex items-center gap-4 px-4 overflow-x-auto py-2 bg-black/20 backdrop-blur">
-                {otherPlayers.map(p => (
-                    <div key={p.id} className="scale-75 origin-center shrink-0">
-                        <PlayerSpot 
-                            player={p} 
-                            isMe={false} 
-                            isCurrentTurn={gameState.current_turn_player_id === p.id}
-                            turnDuration={parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30")}
-                        />
-                    </div>
-                ))}
-            </div>
-
-            <div className="flex-none pb-8 pt-4 bg-gradient-to-t from-black via-black/80 to-transparent">
-                 <div className="max-w-4xl mx-auto flex flex-col items-center">
-                     
-                     {/* Admin Start Button (Lobby/Betting) */}
+                    )}
+                    
+                     {/* Admin Start Button Overlay */}
                      {isAdmin && (gameState.phase === 'Lobby' || gameState.phase === 'Betting') && (
-                         <div className="mb-6 animate-fade-in-up">
+                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
                              <button 
                                 onClick={actions.startGame} 
                                 className={`
-                                   px-8 py-3 rounded-full font-black shadow-[0_0_20px_rgba(234,179,8,0.4)] transition-transform hover:scale-105 cursor-pointer
-                                   ${gameState.phase === 'Betting' ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-yellow-600 hover:bg-yellow-500 text-black'}
+                                   px-8 py-3 rounded-xl font-black shadow-[0_0_20px_rgba(13,242,128,0.4)] transition-transform hover:scale-105 cursor-pointer border border-primary/20
+                                   ${gameState.phase === 'Betting' ? 'bg-primary hover:bg-white text-background-dark' : 'bg-primary hover:bg-white text-background-dark'}
                                 `}
                              >
                                  {gameState.phase === 'Betting' ? 'DEAL CARDS (FORCE)' : 'START GAME'}
                              </button>
                          </div>
                      )}
+                </div>
 
-                     {gameState.phase === "Betting" && myPlayer && !['Spectating', 'PendingApproval'].includes(myPlayer.status) && (
-                         <div className="mb-6 animate-slide-up bg-black/40 p-4 rounded-2xl border border-yellow-500/20 backdrop-blur-md">
-                             <div className="text-yellow-500 text-xs font-bold uppercase tracking-widest mb-2 text-center">Place Your Bet</div>
-                             <div className="flex gap-2">
-                                 {[10, 50, 100, 500, "All"].map((amt, i) => (
-                                     <button 
-                                        key={i}
-                                        onClick={() => actions.placeBet(amt === "All" ? myPlayer.chips : (amt as number))}
-                                        className="
-                                            w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-700 
-                                            border-2 border-yellow-200 shadow-lg flex items-center justify-center font-bold text-black text-xs sm:text-sm
-                                            hover:scale-110 transition-transform active:scale-95 cursor-pointer
-                                        "
-                                     >
-                                         {amt}
-                                     </button>
-                                 ))}
-                             </div>
-                         </div>
-                     )}
-
-                     {myPlayer && (
-                         <div className="relative">
-                             <PlayerSpot 
-                                 player={myPlayer} 
-                                 isMe={true} 
-                                 isCurrentTurn={isMyTurn}
-                                 turnDuration={parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30")}
-                             />
-                             
-                             {gameState.phase === "Playing" && isMyTurn && (
-                                 <div className="absolute -top-24 left-1/2 transform -translate-x-1/2 z-30 w-max">
-                                     <GameControls 
-                                         isMyTurn={isMyTurn}
-                                         canSplit={canSplit}
-                                         canDouble={canDouble}
-                                         timeLeft={timeLeft}
-                                         totalTime={parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30")}
-                                         onAction={handleGameAction}
-                                     />
-                                 </div>
-                             )}
-                         </div>
-                     )}
-                     
-                     {!myPlayer && (
-                         <div className="text-white/50 italic">Spectating Mode</div>
-                     )}
-                 </div>
+                {/* Action Controls & Betting HUD */}
+                <div className="w-full flex flex-col items-center gap-8 mb-4 min-h-[140px]">
+                    <GameControls 
+                        isMyTurn={isMyTurn}
+                        canSplit={canSplit}
+                        canDouble={canDouble}
+                        timeLeft={timeLeft}
+                        totalTime={parseInt(process.env.NEXT_PUBLIC_TURN_TIMEOUT_SECONDS || "30")}
+                        onAction={handleGameAction}
+                        phase={gameState.phase}
+                        myPlayer={myPlayer}
+                        actions={actions}
+                    />
+                </div>
             </div>
-        </div>
-
-        {/* Contextual Banners */}
-        {gameState.phase === "Payout" && (
-            <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-40 bg-black/60 backdrop-blur-md border border-yellow-500/30 px-8 py-4 rounded-2xl animate-fade-in-down text-center">
-                <h2 className="text-2xl font-black text-yellow-400 uppercase tracking-widest mb-1">Round Over</h2>
-                <div className="text-gray-300 text-xs">Payouts Completed</div>
-                {isAdmin && (
-                    <button 
-                        onClick={actions.nextRound}
-                        className="mt-3 bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg"
-                    >
-                        Next Round
-                    </button>
-                )}
-            </div>
-        )}
-        
-        {gameState.settings.chat_enabled && (
-            <Chat 
-                isOpen={showChat}
-                onToggle={() => setShowChat(!showChat)}
-                messages={chatMessages}
-                onSend={actions.sendChat}
-            />
-        )}
+        </main>
 
         <AdminPanel 
             isOpen={showAdminPanel}
@@ -334,7 +282,23 @@ export default function GameRoom() {
             onUpdateBalance={actions.updateBalance}
             onApprove={actions.approvePlayer}
         />
+        
+        {/* Payout Notification - Re-styled */}
+         {gameState.phase === "Payout" && (
+            <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-50 glass-panel px-12 py-6 rounded-2xl animate-fade-in-down text-center border-primary/30 glow-primary">
+                <h2 className="text-3xl font-black text-primary uppercase tracking-widest mb-1 italic">Round Over</h2>
+                <div className="text-white/70 text-sm font-mono">Payouts Completed</div>
+                {isAdmin && (
+                    <button 
+                        onClick={actions.nextRound}
+                        className="mt-4 bg-white/10 hover:bg-white/20 text-white px-8 py-2 rounded-lg font-bold text-sm border border-white/10 transition-colors uppercase tracking-wider"
+                    >
+                        Next Round
+                    </button>
+                )}
+            </div>
+        )}
 
-    </main>
+    </body>
   );
 }

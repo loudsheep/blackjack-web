@@ -25,113 +25,146 @@ export function AdminPanel({
         setLocalSettings(settings); // Sync when parent updates
     }, [settings]);
 
-    if (!isOpen) return null;
-
-    const pendingPlayers = players.filter(p => p.status === 'PendingApproval');
-    const activePlayers = players.filter(p => p.status !== 'PendingApproval');
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur p-4 animate-fade-in">
-            <div className="bg-gray-800 p-6 rounded-2xl w-full max-w-lg border border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-2">
-                    <h2 className="text-xl font-bold text-yellow-500">Admin Control Information</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-xl cursor-pointer">✕</button>
-                </div>
-                
-                <div className="space-y-6">
-                    {/* Game Flow Actions */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <button onClick={onStartGame} className="bg-green-700 hover:bg-green-600 py-2 rounded-lg font-bold text-white text-sm shadow">
-                            Force Start Game
-                        </button>
-                        <button onClick={onNextRound} className="bg-blue-700 hover:bg-blue-600 py-2 rounded-lg font-bold text-white text-sm shadow">
-                            Force Next Round
+        <>
+            {/* Backdrop */}
+            {isOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"
+                    onClick={onClose}
+                />
+            )}
+
+            {/* Slide-over Panel */}
+            <div className={`
+                fixed right-0 top-0 h-full w-80 glass-panel border-l border-primary/20 
+                transform transition-transform duration-500 z-[100]
+                ${isOpen ? 'translate-x-0' : 'translate-x-full'}
+            `}>
+                <div className="p-6 h-full flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-bold text-primary uppercase italic">Table Admin</h3>
+                        <button 
+                            onClick={onClose}
+                            className="material-symbols-outlined text-white/50 hover:text-white cursor-pointer"
+                        >
+                            close
                         </button>
                     </div>
 
-                    {/* Pending Approvals */}
-                    {pendingPlayers.length > 0 && (
-                        <div className="bg-yellow-900/20 border border-yellow-600/30 p-4 rounded-lg">
-                             <h3 className="text-sm font-bold text-yellow-500 mb-2 uppercase tracking-wider">Pending Requests</h3>
-                             {pendingPlayers.map(p => (
-                                 <div key={p.id} className="flex justify-between items-center bg-black/30 p-2 rounded mb-1">
-                                     <span className="text-sm text-white">{p.name}</span>
-                                     <div className="flex gap-2">
-                                          <button onClick={() => onApprove(p.id)} className="text-xs bg-green-600 px-2 py-1 rounded text-white font-bold">Approve</button>
-                                          <button onClick={() => onKick(p.id)} className="text-xs bg-red-600 px-2 py-1 rounded text-white font-bold">Deny</button>
+                    <div className="space-y-6 flex-1">
+                        {/* Game Flow Actions */}
+                        <div className="space-y-2">
+                             <label className="text-[10px] font-bold uppercase text-white/40 tracking-widest">Game Flow</label>
+                             <div className="grid grid-cols-1 gap-3">
+                                <button 
+                                    onClick={onStartGame} 
+                                    className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 flex items-center justify-center gap-3 transition-colors cursor-pointer"
+                                >
+                                    <span className="material-symbols-outlined text-[20px] text-green-400">play_circle</span>
+                                    <span className="text-sm font-bold uppercase">Force Start</span>
+                                </button>
+                                <button 
+                                    onClick={onNextRound} 
+                                    className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 flex items-center justify-center gap-3 transition-colors cursor-pointer"
+                                >
+                                    <span className="material-symbols-outlined text-[20px] text-blue-400">skip_next</span>
+                                    <span className="text-sm font-bold uppercase">Force Next Round</span>
+                                </button>
+                            </div>
+                        </div>
+
+                         {/* Pending Approvals */}
+                        {players.some(p => p.status === 'PendingApproval') && (
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase text-yellow-500 tracking-widest animate-pulse">Pending Requests</label>
+                                {players.filter(p => p.status === 'PendingApproval').map(p => (
+                                     <div key={p.id} className="bg-white/5 p-3 rounded-lg border border-white/10 flex justify-between items-center">
+                                         <span className="font-bold text-sm">{p.name}</span>
+                                         <div className="flex gap-2">
+                                              <button onClick={() => onApprove(p.id)} className="text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 px-2 py-1 rounded border border-green-500/30">✓</button>
+                                              <button onClick={() => onKick(p.id)} className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1 rounded border border-red-500/30">✗</button>
+                                         </div>
                                      </div>
-                                 </div>
-                             ))}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        )}
 
-                    {/* Game Settings Form */}
-                    <div className="bg-black/20 p-4 rounded-lg border border-white/5">
-                        <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">Game Rules</h3>
-                        <div className="space-y-3 text-sm">
-                            <div>
-                                <label className="block text-gray-500 text-xs mb-1">Initial Chips</label>
-                                <input 
-                                    type="number" 
-                                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white"
-                                    value={localSettings.initial_chips}
-                                    onChange={(e) => setLocalSettings({...localSettings, initial_chips: parseInt(e.target.value)})}
-                                />
+                        {/* Settings */}
+                        <div className="space-y-4">
+                            <label className="text-[10px] font-bold uppercase text-white/40 tracking-widest">Table Settings</label>
+                            
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-white/50 text-xs mb-1">Initial Chips</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-primary/50 outline-none"
+                                        value={localSettings.initial_chips}
+                                        onChange={(e) => setLocalSettings({...localSettings, initial_chips: parseInt(e.target.value)})}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                                    <span className="text-sm text-gray-300">Approval Req.</span>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={localSettings.approval_required}
+                                        onChange={(e) => setLocalSettings({...localSettings, approval_required: e.target.checked})}
+                                        className="accent-primary"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                                    <span className="text-sm text-gray-300">Enable Chat</span>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={localSettings.chat_enabled}
+                                        onChange={(e) => setLocalSettings({...localSettings, chat_enabled: e.target.checked})}
+                                        className="accent-primary"
+                                    />
+                                </div>
+                                <button 
+                                    onClick={() => onUpdateSettings(localSettings)}
+                                    className="w-full bg-primary hover:bg-white text-background-dark font-black uppercase py-2 rounded-lg transition-colors shadow-lg"
+                                >
+                                    Save Settings
+                                </button>
                             </div>
-                            <div>
-                                <label className="block text-gray-500 text-xs mb-1">Max Players</label>
-                                <input 
-                                    type="number" 
-                                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white"
-                                    value={localSettings.max_players}
-                                    onChange={(e) => setLocalSettings({...localSettings, max_players: parseInt(e.target.value)})}
-                                />
+                        </div>
+
+                         {/* Player Management */}
+                         <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase text-white/40 tracking-widest">Active Players</label>
+                            <div className="space-y-2">
+                                {players.filter(p => p.status !== 'PendingApproval').map(p => (
+                                    <div key={p.id} className="bg-white/5 p-3 rounded-lg border border-white/5">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className={`text-sm font-bold ${p.is_connected ? "text-white" : "text-white/50"}`}>
+                                                {p.name}
+                                            </span>
+                                            <span className="text-xs font-mono text-primary">${p.chips}</span>
+                                        </div>
+                                        <div className="flex gap-2 justify-end">
+                                            <button onClick={() => onUpdateBalance(p.id, 1000)} className="text-[10px] bg-white/5 hover:bg-white/10 text-green-400 px-2 py-1 rounded border border-white/10">+1k</button>
+                                            <button onClick={() => onUpdateBalance(p.id, -1000)} className="text-[10px] bg-white/5 hover:bg-white/10 text-red-400 px-2 py-1 rounded border border-white/10">-1k</button>
+                                            <button onClick={() => onKick(p.id)} className="text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1 rounded border border-red-500/30">Kick</button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <input 
-                                    type="checkbox" 
-                                    id="chk_approval"
-                                    checked={localSettings.approval_required}
-                                    onChange={(e) => setLocalSettings({...localSettings, approval_required: e.target.checked})}
-                                />
-                                <label htmlFor="chk_approval" className="text-gray-300">Approval Required</label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <input 
-                                    type="checkbox" 
-                                    id="chk_chat"
-                                    checked={localSettings.chat_enabled}
-                                    onChange={(e) => setLocalSettings({...localSettings, chat_enabled: e.target.checked})}
-                                />
-                                <label htmlFor="chk_chat" className="text-gray-300">Enable Chat</label>
-                            </div>
-                            <button 
-                                onClick={() => onUpdateSettings(localSettings)}
-                                className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-2 rounded mt-2 transition-colors shadow"
-                            >
-                                Update Settings
-                            </button>
                         </div>
                     </div>
 
-                    {/* Player Management */}
-                    <div className="bg-black/20 p-4 rounded-lg border border-white/5">
-                        <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">Player Management</h3>
-                        {activePlayers.map(p => (
-                            <div key={p.id} className="flex justify-between items-center text-sm py-2 border-b border-gray-700 last:border-0 hover:bg-white/5 px-2 rounded transition-colors">
-                                <span className={p.is_connected ? "text-white" : "text-gray-500"}>
-                                    {p.name} {!p.is_connected && "(Offline)"}
-                                </span>
-                                <div className="flex gap-2">
-                                    <button onClick={() => onUpdateBalance(p.id, 1000)} className="text-xs text-green-400 hover:text-green-300 bg-green-900/30 px-2 py-1 rounded border border-green-800 cursor-pointer">+1k</button>
-                                    <button onClick={() => onUpdateBalance(p.id, -1000)} className="text-xs text-red-400 hover:text-red-300 bg-red-900/30 px-2 py-1 rounded border border-red-800 cursor-pointer">-1k</button>
-                                    <button onClick={() => onKick(p.id)} className="text-xs text-red-200 hover:text-white bg-red-600 px-2 py-1 rounded font-bold cursor-pointer">Kick</button>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="mt-auto border-t border-white/5 pt-6 space-y-4">
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="text-white/50">Server Load</span>
+                            <span className="text-primary font-bold">12%</span>
+                        </div>
+                        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                            <div className="w-[12%] h-full bg-primary"></div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }

@@ -5,19 +5,43 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-primary: #0df280;
+  --color-background-light: #f5f8f7;
+  --color-background-dark: #102219;
 }
 
 @layer base {
   :root {
-    --background: #ffffff;
-    --foreground: #171717;
+    --background: #102219;
+    --foreground: #ffffff;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #0a0a0a;
-      --foreground: #ededed;
-    }
+}
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(16, 34, 25, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(13, 242, 128, 0.1);
   }
+  .card-shadow {
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  }
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(13, 242, 128, 0.2);
+  }
+  .action-button {
+     transition: all 0.2s;
+  }
+  .action-button:hover {
+    box-shadow: 0 0 15px rgba(13, 242, 128, 0.4);
+    transform: translateY(-2px);
+  }
+  .chip-gradient {
+    background: radial-gradient(circle at center, #0df280 0%, #08a356 100%);
+  }
+  /* Material Symbols support if needed manually, but user likely imports via link or similar. 
+     We will assume usage of existing icons or standard text for now if not imported.
+  */
 }
 
 @keyframes shrink {
@@ -103,5 +127,6 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  overflow: hidden; /* Prevent scrolling on the body for the app-like feel */
 }
