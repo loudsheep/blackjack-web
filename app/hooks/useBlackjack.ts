@@ -23,6 +23,7 @@ export function useBlackjack() {
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [lastPingTime, setLastPingTime] = useState<number>(0);
     const [latency, setLatency] = useState<number | null>(null);
+    const [connectionError, setConnectionError] = useState<{title: string, msg: string} | null>(null);
 
     const socketRef = useRef<WebSocket | null>(null);
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -147,9 +148,12 @@ export function useBlackjack() {
                 // Ignore messages that are not JSON
                 if (typeof event.data !== 'string') return;
                 
-                // console.log("Received WebSocket message:", event.data); // Too noisy with ping/pong
-
+                // Log all messages except Pong to reduce noise
                 const msg: any = JSON.parse(event.data);
+                if (msg.event !== 'Pong') {
+                    console.log(`[WS RX] ${msg.event}`, msg.data);
+                }
+
                 if (msg.event) {
                      // Handle JoinedLobby specially here to save to localStorage since handleServerEvent logic was moved
                      if (msg.event === "JoinedLobby") {
@@ -183,6 +187,10 @@ export function useBlackjack() {
             if (event.code === 403 || event.reason.includes("Forbidden")) {
                  console.warn("Connection rejected (403 Forbidden). Clearing auth.");
                  addToast("Connection rejected (Full or Invalid)", 'error');
+                 setConnectionError({
+                     title: "Connection Rejected",
+                     msg: "The game room is full or access was denied. Please ask an administrator to increase the player limit or try again later."
+                 });
                  localStorage.removeItem(`blackjack_auth_${gameId}`);
             } else {
                  addToast("Disconnected from server", 'error');
@@ -196,10 +204,8 @@ export function useBlackjack() {
     }, [addToast, sendMessage, lastPingTime]); // lastPingTime dependency is problematic for connect, but we will fix handler.
 
     const handleServerEvent = (msg: any) => {
-        // console.log("Processing Server Event:", msg.event);
         switch (msg.event) {
             case "GameStateSnapshot":
-                // console.log("GameState:", msg.data);
                 setGameState(msg.data);
                 if (msg.data.players) {
                      setPendingRequests(prev => prev.filter(req => !msg.data.players.find((p: any) => p.id === req.id)));
@@ -259,6 +265,7 @@ export function useBlackjack() {
         pendingRequests,
         toasts,
         latency,
+        connectionError,
         connect,
         actions
     };

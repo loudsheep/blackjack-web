@@ -1,7 +1,7 @@
 "use client";
 
 import { useBlackjack } from "../../hooks/useBlackjack";
-import { Card, Suit, Rank, Player, GamePhase } from "../../types";
+import { Card, Suit, Rank, Player, GamePhase, GameSettings } from "../../types";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -78,7 +78,7 @@ export default function GameRoom() {
   const router = useRouter();
   
   const { 
-    isConnected, gameState, myPlayerId, isAdmin, chatMessages, pendingRequests, toasts, latency, connect, actions 
+    isConnected, gameState, myPlayerId, isAdmin, chatMessages, pendingRequests, toasts, latency, connect, connectionError, actions 
   } = useBlackjack();
 
   const [username, setUsername] = useState("");
@@ -87,6 +87,9 @@ export default function GameRoom() {
   const [chatInput, setChatInput] = useState("");
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
+
+  // Admin Settings State
+  const [editingSettings, setEditingSettings] = useState<GameSettings | null>(null);
 
   // Auto-scroll chat
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -114,6 +117,13 @@ export default function GameRoom() {
   const latestGameStateRef = useRef(gameState);
   useEffect(() => { latestGameStateRef.current = gameState; }, [gameState]);
 
+  // Sync settings when they change from server
+  useEffect(() => {
+      if (gameState?.settings) {
+          setEditingSettings(gameState.settings);
+      }
+  }, [gameState?.settings]);
+  
   // Derived state (moved up for use in effects)
   const myPlayer = gameState?.players.find(p => p.id === myPlayerId);
   // Calculate active hand details for timer reset
@@ -180,6 +190,29 @@ export default function GameRoom() {
   const otherPlayers = gameState?.players.filter(p => p.id !== myPlayerId) || [];
   const isMyTurn = gameState?.current_turn_player_id === myPlayerId;
   const canBet = gameState?.phase === "Betting" && myPlayer?.status !== "Observing" && myPlayer?.status !== "PendingApproval";
+
+  if (connectionError) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white font-sans p-4">
+            <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full text-center border border-red-500/30 animate-fade-in">
+                <div className="text-6xl mb-6">🚫</div>
+                <h2 className="text-3xl font-bold text-red-500 mb-2">{connectionError.title}</h2>
+                <p className="text-gray-300 text-lg mb-6">{connectionError.msg}</p>
+                 <div className="bg-black/30 p-4 rounded-lg text-sm text-gray-400 mb-6 text-left">
+                    <p className="mb-2"><strong>Why am I seeing this?</strong></p>
+                    <ul className="list-disc list-inside space-y-1">
+                        <li>The room might be full (Max Players reached).</li>
+                        <li>The game ID might be invalid.</li>
+                        <li>You might be blocked from re-joining.</li>
+                    </ul>
+                </div>
+                <button onClick={() => router.push('/')} className="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-bold transition-colors w-full">
+                    Return to Home
+                </button>
+            </div>
+        </div>
+    );
+  }
 
   if (!hasJoined || !isConnected ) {
     return (
@@ -538,13 +571,65 @@ export default function GameRoom() {
          </div>
 
          {/* Right Side: Chat & Admin */}
-         <div className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col">
+         {(isAdmin || gameState.settings.chat_enabled) && (
+         <div className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col min-w-[320px]">
             
             {/* Admin Panel (Conditional) */}
             {isAdmin && showAdminPanel && (
-               <div className="p-4 bg-gray-800 border-b border-gray-700 max-h-1/2 overflow-y-auto">
-                   <h3 className="font-bold text-yellow-500 mb-2">Admin Controls</h3>
+               <div className="p-4 bg-gray-800 border-b border-gray-700 max-h-[60%] overflow-y-auto custom-scrollbar">
+                   <h3 className="font-bold text-yellow-500 mb-4 border-b border-yellow-500/30 pb-2">Admin Controls</h3>
                    
+                   {/* Game Settings Form */}
+                   <div className="mb-6 bg-black/40 p-3 rounded">
+                       <h4 className="text-xs uppercase text-gray-400 mb-3 font-bold">Game Settings</h4>
+                       {editingSettings && (
+                           <div className="space-y-3 text-sm">
+                               <div>
+                                   <label className="block text-gray-500 text-xs mb-1">Initial Chips</label>
+                                   <input 
+                                       type="number" 
+                                       className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1"
+                                       value={editingSettings.initial_chips}
+                                       onChange={(e) => setEditingSettings({...editingSettings, initial_chips: parseInt(e.target.value)})}
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-gray-500 text-xs mb-1">Max Players</label>
+                                   <input 
+                                       type="number" 
+                                       className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1"
+                                       value={editingSettings.max_players}
+                                       onChange={(e) => setEditingSettings({...editingSettings, max_players: parseInt(e.target.value)})}
+                                   />
+                               </div>
+                               <div className="flex items-center gap-2">
+                                   <input 
+                                       type="checkbox" 
+                                       id="chk_approval"
+                                       checked={editingSettings.approval_required}
+                                       onChange={(e) => setEditingSettings({...editingSettings, approval_required: e.target.checked})}
+                                   />
+                                   <label htmlFor="chk_approval" className="text-gray-300">Approval Required</label>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                   <input 
+                                       type="checkbox" 
+                                       id="chk_chat"
+                                       checked={editingSettings.chat_enabled}
+                                       onChange={(e) => setEditingSettings({...editingSettings, chat_enabled: e.target.checked})}
+                                   />
+                                   <label htmlFor="chk_chat" className="text-gray-300">Chat Enabled</label>
+                               </div>
+                               <button 
+                                   onClick={() => actions.updateSettings(editingSettings)}
+                                   className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-1 rounded mt-2 transition-colors"
+                               >
+                                   Update Settings
+                               </button>
+                           </div>
+                       )}
+                   </div>
+
                    {/* Pending Requests */}
                    {gameState.settings.approval_required && pendingRequests.length > 0 && (
                        <div className="mb-4">
@@ -580,21 +665,24 @@ export default function GameRoom() {
             )}
 
             {/* Chat Area */}
-            {gameState.settings.chat_enabled ? (
-               <div className="flex-1 flex flex-col min-h-0">
-                  <div className="p-3 bg-gray-800 text-xs font-bold text-gray-400 uppercase tracking-wider">Chat</div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {gameState.settings.chat_enabled && (
+               <div className="flex-1 flex flex-col min-h-0 border-t border-gray-700/50">
+                  <div className="p-3 bg-gray-800 text-xs font-bold text-gray-400 uppercase tracking-wider flex justify-between items-center">
+                      <span>Chat</span>
+                      <span className="text-[10px] bg-gray-700 px-1 rounded">Live</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                       {chatMessages.map((msg, i) => (
-                          <div key={i} className="text-sm">
+                          <div key={i} className="text-sm animate-fade-in">
                               <span className="font-bold text-green-400">{msg.from}: </span>
                               <span className="text-gray-300 break-words">{msg.msg}</span>
                           </div>
                       ))}
                       <div ref={chatEndRef} />
                   </div>
-                  <div className="p-3 bg-gray-800">
+                  <div className="p-3 bg-gray-800 border-t border-gray-700">
                       <input 
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500 text-gray-200 placeholder-gray-500 transition-colors"
                         placeholder="Type a message..."
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
@@ -607,12 +695,9 @@ export default function GameRoom() {
                       />
                   </div>
                </div>
-            ) : (
-                <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
-                    Chat disabled
-                </div>
             )}
          </div>
+         )}
       </div>
 
     </main>
