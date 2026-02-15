@@ -29,13 +29,23 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Script id="umami-custom-tracker">
+          {`
+            window.umamiBeforeSend = (module, payload) => {
+              if (module === 'pageview' && payload && payload.url && payload.url.startsWith("/game/")) {
+                return { ...payload, url: "/game/[id]" };
+              }
+              return payload;
+            };
+          `}
+        </Script>
         <Script
           src="https://analytics.loudsheep.dev/script.js"
           data-website-id="29a5f604-ee9d-49c2-ab9b-d574ee7e9e30"
-          data-auto-track="false"
+          data-auto-track="true"
+          data-before-send="umamiBeforeSend"
           strategy="afterInteractive"
         />
-        <UmamiAnalytics />
         {children}
       </body>
     </html>

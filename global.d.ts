@@ -5,5 +5,6 @@ declare global {
     umami?: {
       track: (eventOrProps?: string | Record<string, any> | ((props: any) => Record<string, any>), data?: Record<string, any>) => void;
     };
+    umamiBeforeSend?: (module: string, payload: any) => any;
   }
 }
