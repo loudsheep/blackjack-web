@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import UmamiAnalytics from "../components/UmamiAnalytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,9 +25,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script async defer src="https://analytics.loudsheep.dev/script.js" data-website-id="29a5f604-ee9d-49c2-ab9b-d574ee7e9e30" data-auto-track="false"></script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <UmamiAnalytics />
         {children}
       </body>
     </html>
