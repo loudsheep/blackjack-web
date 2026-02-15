@@ -1,6 +1,6 @@
 import { Player } from "@/app/types";
 import { Hand } from "./Hand";
-import { calculateHandValue } from "../../app/utils/gameUtils";
+import { calculateHandValue } from "../../utils/gameUtils";
 
 // Local utility removed in favor of shared import
 

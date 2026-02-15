@@ -1,7 +1,7 @@
 import { Card as CardType } from "@/app/types";
 import { Hand } from "./Hand";
 import { Card } from "./Card";
-import { calculateHandValue } from "@/app/utils/gameUtils";
+import { calculateHandValue } from "@/utils/gameUtils";
 
 interface DealerAreaProps {
   dealerHand: CardType[];

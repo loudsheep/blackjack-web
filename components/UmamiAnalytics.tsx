@@ -7,32 +7,15 @@ export default function UmamiAnalytics() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const trackPageView = () => {
-      if (window.umami) {
-        let trackedPath = pathname;
-
-        // Check if the path starts with /game/
-        if (pathname.startsWith("/game/")) {
-          trackedPath = "/game/[id]";
-        }
-
-        window.umami.track(trackedPath);
-      }
-    };
-
+    // Override the default tracker functions
     if (window.umami) {
-      trackPageView();
-    } else {
-      const interval = setInterval(() => {
-        if (window.umami) {
-          clearInterval(interval);
-          trackPageView();
-        }
-      }, 500);
-      
-      return () => clearInterval(interval);
+       const originalTrack = window.umami.track;
+       
+       // Overwrite track to intercept automatic page views if possible?
+       // No, Umami auto-tracking uses internal logic.
+       // We can only use data-before-send if we can register it globally
     }
-  }, [pathname]);
+  }, []);
 
   return null;
 }

@@ -1,5 +1,5 @@
 import { Player } from "@/app/types";
-import { calculateHandValue } from "@/app/utils/gameUtils";
+import { calculateHandValue } from "@/utils/gameUtils";
 
 interface PayoutModalProps {
     players: Player[];
