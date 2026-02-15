@@ -520,7 +520,9 @@ export default function GameRoom() {
                         })()}
 
                         {/* Controls */}
-                        {gameState.phase === "Betting" && (
+                        {gameState.phase === "Betting" && myPlayer && 
+                            // Only show betting controls if player is not spectating or pending
+                            !['Spectating', 'PendingApproval'].includes(myPlayer.status) && (
                            <div className="flex gap-2 items-center">
                                <input 
                                   type="number" 
@@ -557,6 +559,44 @@ export default function GameRoom() {
                                         {timeLeft < 10 && <span className="absolute top-0 right-1 text-[10px]">{Math.ceil(timeLeft)}</span>}
                                     </button>
                                     <button onClick={() => actions.sendGameAction("Double")} className="btn-action bg-blue-600 px-6 py-2 rounded font-bold hover:scale-105 transition-transform">DOUBLE</button>
+                                    
+                                    {/* Split Button Logic */}
+                                    {(() => {
+                                        if (!activeHandObj) return null;
+                                        
+                                        // Handle both hand structures (array or object)
+                                        let currentCards: Card[] = [];
+                                        let currentBet = 0;
+                                        
+                                        if (Array.isArray(activeHandObj)) {
+                                            currentCards = activeHandObj;
+                                            // Assume default bet if structure doesn't support it, or derive from logic
+                                            currentBet = 0; 
+                                        } else if (typeof activeHandObj === 'object') {
+                                            currentCards = (activeHandObj as any).cards || [];
+                                            currentBet = (activeHandObj as any).bet || 0;
+                                        }
+
+                                        // Check split conditions:
+                                        // 1. Exactly 2 cards
+                                        // 2. Ranks match exactly (e.g. Jack & Jack, not Jack & Queen)
+                                        // 3. User has enough chips to cover the new bet
+                                        const canSplit = currentCards.length === 2 && 
+                                                         currentCards[0].rank === currentCards[1].rank &&
+                                                         (myPlayer?.chips || 0) >= currentBet;
+
+                                        if (canSplit) {
+                                            return (
+                                                <button 
+                                                    onClick={() => actions.sendGameAction("Split")} 
+                                                    className="btn-action bg-purple-600 px-6 py-2 rounded font-bold hover:scale-105 transition-transform border border-purple-400"
+                                                >
+                                                    SPLIT
+                                                </button>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                             </div>
                         )}
