@@ -186,6 +186,7 @@ export default function GameRoom() {
                             player={p} 
                             isMe={false} 
                             isCurrentTurn={gameState.current_turn_player_id === p.id}
+                            gamePhase={gameState.phase}
                         />
                     ))}
                     {otherPlayers.length === 0 && (
@@ -232,6 +233,7 @@ export default function GameRoom() {
                             player={myPlayer} 
                             isMe={true} 
                             isCurrentTurn={isMyTurn}
+                            gamePhase={gameState.phase}
                         />
                     )}
                 </div>

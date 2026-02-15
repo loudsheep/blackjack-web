@@ -41,10 +41,10 @@ export function Hand({ cards, score, status, isActive, bet, className = "", isDe
       {/* Cards Container */}
       <div className={`
         relative flex items-center justify-center
-        min-w-[80px] min-h-[100px] sm:min-w-[100px] sm:min-h-[120px]
-        rounded-xl p-2 transition-all duration-300 border-2
+        min-w-[90px] min-h-[110px] sm:min-w-[110px] sm:min-h-[130px]
+        rounded-xl p-4 transition-all duration-300 border-2
         ${getBorderColor()}
-        ${isActive && !isDealer ? 'bg-white/10 scale-105 z-10' : ''}
+        ${isActive && !isDealer ? 'bg-white/10 scale-105 z-10 shadow-[0_0_30px_rgba(13,242,128,0.2)]' : ''}
       `}>
          <div className={`flex ${isDealer ? 'gap-4' : '-space-x-12'} transition-all duration-300`}>
             {cards.map((card, idx) => (

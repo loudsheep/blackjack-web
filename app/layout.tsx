@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "♠️ VIP Blackjack",
+  title: "♦️ VIP Blackjack",
   description: "Online multiplayer blackjack game.",
 };
 
