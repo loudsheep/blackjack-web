@@ -168,7 +168,7 @@ export function useBlackjack() {
                      if (msg.event === "Pong") {
                         setLatency(Date.now() - lastPingTimeRef.current);
                      } else {
-                         handleServerEvent(msg);
+                         handleServerEvent(msg, gameId);
                      }
                 }
             } catch (err) {
@@ -182,6 +182,19 @@ export function useBlackjack() {
             setGameState(null);
             setMyPlayerId(null);
             setIsAdmin(false);
+
+            // Handle Kicked Specifics
+            // Code 4000 or reason containing "Kicked" are common conventions or server implementations
+            // If the server sends a generic close, we might rely on a prior message or just reason text.
+            if (event.code === 4000 || event.reason.toLowerCase().includes("kick")) {
+                console.warn("Player was kicked by admin.");
+                setConnectionError({
+                    title: "You Have Been Kicked",
+                    msg: "An administrator has removed you from the game room."
+                });
+                localStorage.removeItem(`blackjack_auth_${gameId}`);
+                return;
+            }
 
             // 403 Forbidden usually means full or invalid reconnection
             if (event.code === 403 || event.reason.includes("Forbidden")) {
@@ -203,7 +216,7 @@ export function useBlackjack() {
         };
     }, [addToast, sendMessage, lastPingTime]); // lastPingTime dependency is problematic for connect, but we will fix handler.
 
-    const handleServerEvent = (msg: any) => {
+    const handleServerEvent = (msg: any, gameId: string) => {
         switch (msg.event) {
             case "GameStateSnapshot":
                 setGameState(msg.data);
@@ -230,7 +243,17 @@ export function useBlackjack() {
                 break;
             case "Error":
                 console.error("Server Error:", msg.data.msg);
-                addToast(msg.data.msg, 'error');
+                // Handle "Kicked" message if server sends it as an Error event before closing
+                if (msg.data.msg && msg.data.msg.toLowerCase().includes("kick")) {
+                    setConnectionError({
+                        title: "You Have Been Kicked",
+                        msg: "An administrator has removed you from the game room."
+                    });
+                    if (gameId) localStorage.removeItem(`blackjack_auth_${gameId}`); // Prevent auto-reconnect
+                    if (socketRef.current) socketRef.current.close();
+                } else {
+                    addToast(msg.data.msg, 'error');
+                }
                 break;
         }
     };
