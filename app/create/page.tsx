@@ -11,7 +11,7 @@ export default function CreateGame() {
   const [settings, setSettings] = useState({
     initial_chips: 200,
     max_players: 10,
-    deck_count: 1,
+    deck_count: 4,
     approval_required: false,
     chat_enabled: true,
   });
