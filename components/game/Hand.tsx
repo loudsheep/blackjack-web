@@ -28,8 +28,8 @@ export function Hand({ cards, score, status, isActive, bet, className = "", isDe
       {status && status !== "Playing" && (
         <div className={`
           mb-2 px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest
-          animate-bounce shadow-lg z-20
-          ${['Won', 'Blackjack'].includes(status) ? 'bg-primary text-background-dark' : ''}
+          shadow-lg z-20 transition-all duration-300 transform
+          ${['Won', 'Blackjack'].includes(status) ? 'bg-primary text-background-dark scale-110' : ''}
           ${['Lost', 'Busted'].includes(status) ? 'bg-red-600 text-white' : ''}
           ${status === 'Push' ? 'bg-yellow-500 text-black' : ''}
           ${status === 'Doubled' ? 'bg-blue-600 text-white' : ''}
@@ -44,9 +44,11 @@ export function Hand({ cards, score, status, isActive, bet, className = "", isDe
         min-w-[90px] min-h-[110px] sm:min-w-[110px] sm:min-h-[130px]
         rounded-xl p-4 transition-all duration-300 border-2
         ${getBorderColor()}
-        ${isActive && !isDealer ? 'bg-white/10 scale-105 z-10 shadow-[0_0_30px_rgba(13,242,128,0.2)]' : ''}
+          ${isActive && !isDealer ? 'bg-white/10 scale-105 z-10 shadow-[0_0_30px_rgba(13,242,128,0.2)]' : ''}
+         ${isDealer ? 'origin-top transition-transform duration-300 sm:scale-100' : ''}
+         ${isDealer && cards.length > 3 ? 'scale-[0.65]' : isDealer ? 'scale-[0.85]' : ''} 
       `}>
-         <div className={`flex ${isDealer ? 'gap-4' : '-space-x-12'} transition-all duration-300`}>
+         <div className={`flex ${isDealer ? 'gap-1 sm:gap-4 justify-center' : '-space-x-12'} transition-all duration-300`}>
             {cards.map((card, idx) => (
                 <div 
                     key={idx} 
@@ -76,7 +78,7 @@ export function Hand({ cards, score, status, isActive, bet, className = "", isDe
          {cards.length > 0 && (
             <div className={`
                 absolute -bottom-4 left-1/2 transform -translate-x-1/2
-                px-4 py-1 rounded-lg text-lg font-black shadow-lg
+                px-4 py-1 rounded-lg text-lg font-black shadow-lg z-[100]
                 ${status === 'Busted' ? 'bg-red-900/90 text-red-200' : 'bg-primary text-background-dark'}
                 ${isActive ? 'scale-110' : ''}
             `}>
