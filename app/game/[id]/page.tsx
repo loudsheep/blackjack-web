@@ -160,7 +160,8 @@ export default function GameRoom() {
                     <span className="material-symbols-outlined text-red-400 text-[20px]">logout</span>
                 </button>
                  
-                 {/* Admin Start - Responsive */}
+                 {/* Admin Start - Responsive (Removed - Moved to GameControls) */}
+                 {/* 
                  {isAdmin && (gameState.phase === 'Lobby' || gameState.phase === 'Betting') && (
                      <button 
                         onClick={actions.startGame} 
@@ -169,6 +170,7 @@ export default function GameRoom() {
                          {gameState.phase === 'Betting' ? 'FORCE DEAL' : 'START'}
                      </button>
                  )}
+                 */}
             </div>
         </header>
 
@@ -248,6 +250,7 @@ export default function GameRoom() {
                         phase={gameState.phase}
                         myPlayer={myPlayer}
                         actions={actions}
+                        isAdmin={isAdmin}
                     />
                 </div>
             </div>

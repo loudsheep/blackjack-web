@@ -10,10 +10,36 @@ interface GameControlsProps {
     phase: string;
     myPlayer?: Player;
     actions?: any;
+    isAdmin?: boolean;
 }
 
-export function GameControls({ isMyTurn, canSplit, canDouble, onAction, phase, myPlayer, actions }: GameControlsProps) {
+export function GameControls({ isMyTurn, canSplit, canDouble, onAction, phase, myPlayer, actions, isAdmin }: GameControlsProps) {
     const [betAmount, setBetAmount] = useState(100);
+
+    // --- Lobby Phase ---
+    if (phase === "Lobby") {
+        if (isAdmin) {
+             return (
+                <div className="flex justify-center animate-pulse">
+                    <button 
+                        onClick={() => actions?.startGame()}
+                        className="bg-primary hover:bg-white text-background-dark font-black uppercase rounded-2xl px-12 py-6 text-2xl shadow-[0_0_30px_rgba(13,242,128,0.5)] transition-all hover:scale-105 active:scale-95 cursor-pointer border-2 border-green-400"
+                    >
+                        START GAME
+                    </button>
+                </div>
+             );
+        } else {
+            return (
+                <div className="flex flex-col items-center gap-2 animate-pulse">
+                    <span className="material-symbols-outlined text-4xl text-white/20">hourglass_empty</span>
+                    <span className="text-white/40 text-sm font-bold uppercase tracking-widest text-center">
+                        Waiting for host to start the game...
+                    </span>
+                </div>
+            );
+        }
+    }
 
     // --- Betting Phase ---
     if (phase === "Betting") {
