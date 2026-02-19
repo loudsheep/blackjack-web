@@ -34,8 +34,20 @@ export default function RootLayout({
         <Script id="umami-custom-tracker" strategy="afterInteractive">
           {`
             window.umamiBeforeSend = function (type, payload) {
-              if (payload && payload.url && payload.url.startsWith("/game/")) {
-                return { ...payload, url: "/game/[id]" };
+              if (!payload || !payload.url) {
+                return payload;
+              }
+
+              try {
+                var urlObj = new URL(payload.url, window.location.href);
+                var path = urlObj.pathname;
+
+                if (path && path.startsWith("/game/")) {
+                  // Normalize dynamic game URLs like /game/12345 -> /game/[id]
+                  return { ...payload, url: "/game/[id]" };
+                }
+              } catch (e) {
+                // If URL parsing fails, fall back to original payload
               }
 
               return payload;
