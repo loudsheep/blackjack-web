@@ -225,7 +225,12 @@ export default function GameRoom() {
                 
                 {/* Dealer Section */}
                 <div className="pointer-events-auto w-full flex justify-center">
-                    <DealerArea dealerHand={gameState.dealer_hand} phase={gameState.phase} />
+                    <DealerArea 
+                        dealerHand={gameState.dealer_hand} 
+                        phase={gameState.phase} 
+                        deckCount={gameState.settings.deck_count}
+                        deckRemaining={gameState.deck_remaining}
+                    />
                 </div>
 
                 {/* Active Player Hands (Center) */}
@@ -271,7 +276,7 @@ export default function GameRoom() {
         
         {/* Payout Notification - Moved to bottom center to avoid blocking dealer */}
          {gameState.phase === "Payout" && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 md:top-auto md:bottom-32 md:translate-y-0 z-[60] glass-panel px-8 sm:px-12 py-6 rounded-2xl animate-fade-in-down text-center border-primary/30 glow-primary w-[90%] sm:w-auto shadow-2xl bg-black/80 backdrop-blur-xl">
+            <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-[60] glass-panel px-8 sm:px-12 py-6 rounded-2xl animate-fade-in-down text-center border-primary/30 glow-primary w-[90%] sm:w-auto shadow-2xl bg-black/80 backdrop-blur-xl md:bottom-32">
                 <h2 className="text-3xl font-black text-primary uppercase tracking-widest mb-1 italic">Round Over</h2>
                 <div className="text-white/70 text-sm font-mono">Payouts Completed</div>
                 {isAdmin && (
