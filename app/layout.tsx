@@ -33,10 +33,11 @@ export default function RootLayout({
       >
         <Script id="umami-custom-tracker" strategy="afterInteractive">
           {`
-            window.umamiBeforeSend = function (payload) {
-              if (payload.url && payload.url.startsWith("/game/")) {
+            window.umamiBeforeSend = function (type, payload) {
+              if (payload && payload.url && payload.url.startsWith("/game/")) {
                 return { ...payload, url: "/game/[id]" };
               }
+
               return payload;
             };
           `}
